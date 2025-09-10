@@ -44,8 +44,8 @@ def pusherIngredientes():
     
     pusher_client = pusher.Pusher(
       app_id="2046025",
-      key="e57a8ad0a9dc2e83d9a2",
-      secret="tu_secret_key_ingredientes",  # Cambia por tu secret real
+      key="48294aad3f28c3669613", 
+      secret="5c287b63141dae2934ef",
       cluster="us2",
       ssl=True
     )
