@@ -92,9 +92,9 @@ app.controller("postresCtrl", function ($scope, $http) {
     // Enable pusher logging - don't include this in production
     Pusher.logToConsole = true
 
-    var pusher = new Pusher("5c287b63141dae2934ef", {
-      cluster: "us2"
-    })
+   var pusher = new Pusher('df675041e275bafce4a7', {
+      cluster: 'mt1'
+    });
 
     var channel = pusher.subscribe("canalPostres")
     channel.bind("eventoPostres", function(data) {
@@ -131,7 +131,7 @@ app.controller("postresCtrl", function ($scope, $http) {
     $(document).on("click", ".btn-ingredientes", function (event) {
         const id = $(this).data("idPostre")
 
-        $.get(`/postres/ingredientes/${idPostre}`, function (html) {
+        $.get(`/postres/ingredientes/${id}`, function (html) {
             modal(html, "Ingredientes del Postre", [
                 {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
                     closeModal()
@@ -319,4 +319,5 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
