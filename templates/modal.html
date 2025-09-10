@@ -1,28 +1,78 @@
-<div class="table-responsive">
-    <table class="table table-sm">
-        <thead class="table-active">
-            <tr>
-                <th>Ingrediente</th>
-                <th>Cantidad Necesaria</th>
-                <th>Existencias</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for postreIngrediente in postresIngredientes %}
-            <tr>
-                <td>{{ postreIngrediente.nombreIngrediente }}</td>
-                <td>{{ postreIngrediente.cantidad }}</td>
-                <td>{{ postreIngrediente.existencias }}</td>
-                <td>
-                    {% if postreIngrediente.existencias >= postreIngrediente.cantidad %}
-                        <span class="badge bg-success">Suficiente</span>
+ <div class="container-fluid p-0">
+        <!-- Título del postre -->
+        {% if postresIngredientes and postresIngredientes|length > 0 %}
+        <div class="postre-title">
+            <h6 class="mb-0">{{ postresIngredientes[0].nombrePostre }}</h6>
+        </div>
+        {% endif %}
+
+        <!-- Tabla de ingredientes -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead class="table-active">
+                    <tr>
+                        <th>Ingrediente</th>
+                        <th class="text-center">Cantidad Necesaria</th>
+                        <th class="text-center">Existencias</th>
+                        <th class="text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if postresIngredientes %}
+                        {% for postreIngrediente in postresIngredientes %}
+                        <tr>
+                            <td>
+                                <strong>{{ postreIngrediente.nombreIngrediente }}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ postreIngrediente.cantidad }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ postreIngrediente.existencias }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if postreIngrediente.existencias >= postreIngrediente.cantidad %}
+                                    <span class="badge bg-success badge-status">
+                                        <i class="fas fa-check"></i> Suficiente
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger badge-status">
+                                        <i class="fas fa-exclamation-triangle"></i> Insuficiente
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
                     {% else %}
-                        <span class="badge bg-danger">Insuficiente</span>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                <em>No se encontraron ingredientes para este postre</em>
+                            </td>
+                        </tr>
                     {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Resumen -->
+        {% if postresIngredientes and postresIngredientes|length > 0 %}
+        <div class="mt-3 p-3 summary-box">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                <strong>Total:</strong> {{ postresIngredientes|length }} ingredientes
+                <span class="mx-2">|</span>
+                <span class="text-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Suficientes:</strong> 
+                    {{ postresIngredientes | selectattr('existencias', '>=', 'cantidad') | list | length }}
+                </span>
+                <span class="mx-2">|</span>
+                <span class="text-danger">
+                    <i class="bi bi-x-circle"></i>
+                    <strong>Insuficientes:</strong> 
+                    {{ postresIngredientes | rejectattr('existencias', '>=', 'cantidad') | list | length }}
+                </span>
+            </small>
+        </div>
+        {% endif %}
+    </div>
