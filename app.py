@@ -29,10 +29,10 @@ def pusherPostres():
     import pusher
     
     pusher_client = pusher.Pusher(
-      app_id="2046025",
-      key="48294aad3f28c3669613",
-      secret="5c287b63141dae2934ef",
-      cluster="us2",
+      app_id="2049017",
+      key="df675041e275bafce4a7",
+      secret="e3e5eb065e55edc089f8",
+      cluster="mt1",
       ssl=True
     )
     
@@ -360,3 +360,4 @@ def buscarIngredientes():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
