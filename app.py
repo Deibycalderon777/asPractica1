@@ -30,9 +30,9 @@ def pusherPostres():
     
     pusher_client = pusher.Pusher(
       app_id="2046025",
-      key="48294aad3f28c3669613",
-      secret="5c287b63141dae2934ef",
-      cluster="us2",
+      key="5c287b63141dae2934ef",
+      secret="tu_secret_key_real",  # Pon aquí tu secret key real
+      cluster="mt1",  # Cambiar al cluster correcto
       ssl=True
     )
     
@@ -44,9 +44,9 @@ def pusherIngredientes():
     
     pusher_client = pusher.Pusher(
       app_id="2046025",
-      key="48294aad3f28c3669613", 
-      secret="5c287b63141dae2934ef",
-      cluster="us2",
+      key="5c287b63141dae2934ef", 
+      secret="tu_secret_key_real",  # Pon aquí tu secret key real
+      cluster="mt1",  # Usar el mismo cluster
       ssl=True
     )
     
