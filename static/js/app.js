@@ -131,7 +131,7 @@ app.controller("postresCtrl", function ($scope, $http) {
     $(document).on("click", ".btn-ingredientes", function (event) {
         const id = $(this).data("idPostre")
 
-        $.get(`/postres/ingredientes/${id}`, function (html) {
+        $.get(`/postres/ingredientes/${idPostre}`, function (html) {
             modal(html, "Ingredientes del Postre", [
                 {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
                     closeModal()
@@ -319,3 +319,4 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
