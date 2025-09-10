@@ -1,0 +1,33 @@
+<form id="frmIngredientes" method="post">
+    <div class="mb-1">
+        <label>Nombre Ingrediente</label>
+        <input type="text" class="form-control" id="txtNombre" name="txtNombre" required>
+    </div>
+    <div class="mb-1">
+        <label>Existencias</label>
+        <input type="number" class="form-control" id="txtExistencias" name="txtExistencias" step="0.1" min="0" required>
+    </div>
+    <div class="mb-1 text-end">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+
+    <div class="mb-1 text-end">
+    <button class="btn btn-primary">Guardar</button>
+    <button type="button" class="btn btn-secondary" id="btnCancelarIngrediente">Cancelar</button>
+     </div>
+
+</form>
+
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead class="table-active">
+            <tr>
+                <th>Id</th>
+                <th>Nombre Ingrediente</th>
+                <th>Existencias</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="tbodyIngredientes"></tbody>
+    </table>
+</div>
