@@ -213,8 +213,8 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     Pusher.logToConsole = true
 
     // Pusher para ingredientes
-    var pusher = new Pusher("5c287b63141dae2934ef", {
-      cluster: "mt1"  // Usar el mismo cluster
+    var pusher = new Pusher("48294aad3f28c3669613", {
+      cluster: "us2"
     })
 
     var channel = pusher.subscribe("canalIngredientes")
