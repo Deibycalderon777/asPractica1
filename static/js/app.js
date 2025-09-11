@@ -70,9 +70,9 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
 
 app.controller("appCtrl", function ($scope, $http) {
 })
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // ======================================
-// CONTROLLER DE POSTRES
+// CONTROLLER DE POSTRES - CORREGIDO
 // ======================================
 app.controller("postresCtrl", function ($scope, $http) {
     function buscarPostres() {
@@ -81,7 +81,6 @@ app.controller("postresCtrl", function ($scope, $http) {
         })
     }
 
-    // Función para limpiar formulario de postres
     function limpiarFormularioPostre() {
         $("#frmPostre")[0].reset()
         $("#hiddenIdPostre").remove()
@@ -89,11 +88,10 @@ app.controller("postresCtrl", function ($scope, $http) {
 
     buscarPostres() 
     
-    // Enable pusher logging - don't include this in production
+    // Desactivar logging de Pusher para producción
+    Pusher.logToConsole = false;
 
-    Pusher.logToConsole = true
-    ////////////////////////////////////////////////////////se agrego esta lineas de codigo, quitar si no funciona
-     // AGREGAR VERIFICACIÓN PARA EVITAR PUSHER DUPLICADO:
+    // Verificación para evitar Pusher duplicado
     if (typeof window.pusherPostres === 'undefined') {
         window.pusherPostres = new Pusher('df675041e275bafce4a7', {
             cluster: 'mt1'
@@ -106,56 +104,48 @@ app.controller("postresCtrl", function ($scope, $http) {
         });
     }
 
-    ///////////////////////////////////////////////////////////
-
-   var pusher = new Pusher('df675041e275bafce4a7', {
-      cluster: 'mt1'
-    });
-
-    var channel = pusher.subscribe("canalPostres")
-    channel.bind("eventoPostres", function(data) {
-        // alert(JSON.stringify(data))
-        buscarPostres()
-    })
-
     // Guardar/actualizar postre
-    $(document).on("submit", "#frmPostre", function (event) {
+    $(document).off("submit", "#frmPostre").on("submit", "#frmPostre", function (event) {
         event.preventDefault()
+
+        // Deshabilitar botón durante el envío
+        const $submitBtn = $(this).find('button[type="submit"]');
+        $submitBtn.prop('disabled', true);
 
         $.post("/postre", {
             idPostre: $("#hiddenIdPostre").val() || "",
             nombrePostre: $("#txtNombre").val(),
             precio: $("#txtPrecio").val()
         }, function(response) {
-            // Callback de éxito
             console.log("Postre guardado:", response)
-            // Limpiar formulario
             limpiarFormularioPostre()
-            // Actualizar tabla
             buscarPostres()
-            // Mostrar mensaje de éxito
             toast("Postre guardado correctamente", 3, function() {
                 console.log("Toast terminado")
             })
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar postre:", error)
             alert("Error al guardar el postre")
+        }).always(function() {
+            $submitBtn.prop('disabled', false);
         })
     })
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// se agrego estas lineas de codigo para poder cerrar el modal correctamente 
+
     // Ver ingredientes de un postre
     $(document).off("click", ".btn-ingredientes").on("click", ".btn-ingredientes", function (event) {
         event.preventDefault();
-        // Usar minúsculas porque jQuery convierte automáticamente
+        
         const id = $(this).data("idpostre");
         console.log("ID capturado:", id);
+        
         if (id && id !== 'undefined' && id !== undefined) {
             $.get(`/postres/ingredientes/${id}`, function (html) {
                 modal(html, "Ingredientes del Postre", [
                     {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
                         $(event.target).blur();
-                        closeModal()
+                        setTimeout(function() {
+                            closeModal();
+                        }, 10);
                     }}
                 ])
             }).fail(function(xhr, status, error) {
@@ -167,9 +157,9 @@ app.controller("postresCtrl", function ($scope, $http) {
             alert("Error: No se pudo obtener el ID del postre");
         }
     })
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // Editar postre
-    $(document).on("click", ".btn-editar-postre", function (event) {
+    $(document).off("click", ".btn-editar-postre").on("click", ".btn-editar-postre", function (event) {
         const id = $(this).data("id")
         
         $.get(`/postre/${id}`, function (data) {
@@ -178,13 +168,11 @@ app.controller("postresCtrl", function ($scope, $http) {
                 $("#txtNombre").val(postre.nombrePostre)
                 $("#txtPrecio").val(postre.precio)
                 
-                // Agregar campo hidden para el ID
                 if ($("#hiddenIdPostre").length === 0) {
                     $("#frmPostre").prepend('<input type="hidden" id="hiddenIdPostre" name="idPostre">')
                 }
                 $("#hiddenIdPostre").val(postre.idPostre)
                 
-                // Scroll hacia el formulario
                 $('html, body').animate({
                     scrollTop: $("#frmPostre").offset().top
                 }, 500)
@@ -194,15 +182,13 @@ app.controller("postresCtrl", function ($scope, $http) {
             alert("Error al cargar los datos del postre")
         })
     })
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-   // se reemplazo esta linea de codigo para evitar que se dupliquen eventos 
+
     // Eliminar postre
     $(document).off("click", ".btn-eliminar-postre").on("click", ".btn-eliminar-postre", function (event) {
         const id = $(this).data("id")
-        const $btn = $(this); // Guardar referencia al botón
+        const $btn = $(this);
         
         if (confirm("¿Está seguro de eliminar este postre?")) {
-            // Deshabilitar el botón durante la petición
             $btn.prop('disabled', true);
             
             $.post("/postre/eliminar", {
@@ -215,21 +201,19 @@ app.controller("postresCtrl", function ($scope, $http) {
                 console.error("Error al eliminar postre:", error)
                 alert("Error al eliminar el postre")
             }).always(function() {
-                // Rehabilitar el botón
                 $btn.prop('disabled', false);
             });
         }
     })
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Cancelar edición
-    $(document).on("click", "#btnCancelarPostre", function (event) {
+    $(document).off("click", "#btnCancelarPostre").on("click", "#btnCancelarPostre", function (event) {
         limpiarFormularioPostre()
     })
 })
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // ======================================
-// CONTROLLER DE INGREDIENTES
+// CONTROLLER DE INGREDIENTES - CORREGIDO
 // ======================================
 app.controller("ingredientesCtrl", function ($scope, $http) {
     function buscarIngredientes() {
@@ -238,7 +222,6 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
         })
     }
 
-    // Función para limpiar formulario de ingredientes
     function limpiarFormularioIngrediente() {
         $("#frmIngredientes")[0].reset()
         $("#hiddenIdIngrediente").remove()
@@ -246,47 +229,51 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
 
     buscarIngredientes()
     
-    // Enable pusher logging - don't include this in production
-    Pusher.logToConsole = true
+    // Desactivar logging de Pusher para producción
+    Pusher.logToConsole = false;
 
-    // Pusher para ingredientes
-    var pusher = new Pusher("48294aad3f28c3669613", {
-      cluster: "us2"
-    })
+    // Verificación para evitar Pusher duplicado para ingredientes
+    if (typeof window.pusherIngredientes === 'undefined') {
+        window.pusherIngredientes = new Pusher("48294aad3f28c3669613", {
+            cluster: "us2"
+        });
 
-    var channel = pusher.subscribe("canalIngredientes")
-    channel.bind("eventoDeIngredientes", function(data) {
-        // alert(JSON.stringify(data))
-        buscarIngredientes()
-    })
+        var channel = window.pusherIngredientes.subscribe("canalIngredientes");
+        channel.bind("eventoDeIngredientes", function(data) {
+            console.log("Evento Pusher ingredientes recibido:", data);
+            buscarIngredientes();
+        });
+    }
 
     // Guardar/actualizar ingrediente
-    $(document).on("submit", "#frmIngredientes", function (event) {
+    $(document).off("submit", "#frmIngredientes").on("submit", "#frmIngredientes", function (event) {
         event.preventDefault()
+
+        // Deshabilitar botón durante el envío
+        const $submitBtn = $(this).find('button[type="submit"]');
+        $submitBtn.prop('disabled', true);
 
         $.post("/ingrediente", {
             idIngrediente: $("#hiddenIdIngrediente").val() || "",
             nombreIngrediente: $("#txtNombre").val(),
             existencias: $("#txtExistencias").val()
         }, function(response) {
-            // Callback de éxito
             console.log("Ingrediente guardado:", response)
-            // Limpiar formulario
             limpiarFormularioIngrediente()
-            // Actualizar tabla
             buscarIngredientes()
-            // Mostrar mensaje de éxito
             toast("Ingrediente guardado correctamente", 3, function() {
                 console.log("Toast terminado")
             })
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar ingrediente:", error)
             alert("Error al guardar el ingrediente")
+        }).always(function() {
+            $submitBtn.prop('disabled', false);
         })
     })
 
     // Editar ingrediente
-    $(document).on("click", ".btn-editar-ingrediente", function (event) {
+    $(document).off("click", ".btn-editar-ingrediente").on("click", ".btn-editar-ingrediente", function (event) {
         const id = $(this).data("id")
         
         $.get(`/ingrediente/${id}`, function (data) {
@@ -295,13 +282,11 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
                 $("#txtNombre").val(ingrediente.nombreIngrediente)
                 $("#txtExistencias").val(ingrediente.existencias)
                 
-                // Agregar campo hidden para el ID
                 if ($("#hiddenIdIngrediente").length === 0) {
                     $("#frmIngredientes").prepend('<input type="hidden" id="hiddenIdIngrediente" name="idIngrediente">')
                 }
                 $("#hiddenIdIngrediente").val(ingrediente.idIngrediente)
                 
-                // Scroll hacia el formulario
                 $('html, body').animate({
                     scrollTop: $("#frmIngredientes").offset().top
                 }, 500)
@@ -313,10 +298,13 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     })
 
     // Eliminar ingrediente
-    $(document).on("click", ".btn-eliminar-ingrediente", function (event) {
+    $(document).off("click", ".btn-eliminar-ingrediente").on("click", ".btn-eliminar-ingrediente", function (event) {
         const id = $(this).data("id")
+        const $btn = $(this);
         
         if (confirm("¿Está seguro de eliminar este ingrediente?")) {
+            $btn.prop('disabled', true);
+            
             $.post("/ingrediente/eliminar", {
                 id: id
             }, function(response) {
@@ -326,27 +314,17 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar ingrediente:", error)
                 alert("Error al eliminar el ingrediente")
-            })
+            }).always(function() {
+                $btn.prop('disabled', false);
+            });
         }
     })
 
     // Cancelar edición
-    $(document).on("click", "#btnCancelarIngrediente", function (event) {
+    $(document).off("click", "#btnCancelarIngrediente").on("click", "#btnCancelarIngrediente", function (event) {
         limpiarFormularioIngrediente()
     })
 })
-
-
-
-
-
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ======================================
 // CONFIGURACIÓN DE FECHA Y HORA
@@ -369,10 +347,42 @@ document.addEventListener("DOMContentLoaded", function (event) {
     activeMenuOption(location.hash)
 })
 
+// ======================================
+// FUNCIONES ADICIONALES PARA MODAL
+// ======================================
 
+// Función mejorada para cerrar modal sin errores de aria-hidden
+function closeModalFixed() {
+    // Quitar focus de cualquier elemento dentro del modal
+    $('#modal-message').find(':focus').blur();
+    
+    // Pequeño delay para que el blur tome efecto
+    setTimeout(function() {
+        // Remover aria-hidden antes de cerrar
+        $('#modal-message').removeAttr('aria-hidden');
+        
+        // Cerrar el modal
+        $('#modal-message').modal('hide');
+        
+        // Devolver focus al body
+        $('body').focus();
+    }, 10);
+}
 
-
-
-
-
-
+// Manejo de eventos de Bootstrap para evitar problemas de aria-hidden
+$(document).ready(function() {
+    // Cuando el modal se está ocultando
+    $(document).on('hide.bs.modal', '#modal-message', function (e) {
+        // Quitar focus de todos los elementos dentro del modal
+        $(this).find(':focus').blur();
+        
+        // Remover aria-hidden temporalmente
+        $(this).removeAttr('aria-hidden');
+    });
+    
+    // Cuando el modal se ha ocultado completamente
+    $(document).on('hidden.bs.modal', '#modal-message', function (e) {
+        // Limpiar cualquier focus residual
+        $('body').focus();
+    });
+});
