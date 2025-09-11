@@ -72,27 +72,31 @@ app.controller("appCtrl", function ($scope, $http) {
 })
 
 // ======================================
-// CONTROLLER DE POSTRES - CORREGIDO
+// CONTROLLER DE POSTRES - CORREGIDO PARA DESARROLLO
 // ======================================
 app.controller("postresCtrl", function ($scope, $http) {
     function buscarPostres() {
+        console.log("Ejecutando buscarPostres()");
         $.get("/tbodyPostres", function (trsHTML) {
             $("#tbodyPostres").html(trsHTML)
+            console.log("Tabla de postres actualizada");
         })
     }
 
     function limpiarFormularioPostre() {
+        console.log("Limpiando formulario de postre");
         $("#frmPostre")[0].reset()
         $("#hiddenIdPostre").remove()
     }
 
     buscarPostres() 
     
-    // Desactivar logging de Pusher para producción
+    // Mantener logging de Pusher para desarrollo/práctica
     Pusher.logToConsole = true;
 
     // Verificación para evitar Pusher duplicado
     if (typeof window.pusherPostres === 'undefined') {
+        console.log("Inicializando Pusher para postres");
         window.pusherPostres = new Pusher('df675041e275bafce4a7', {
             cluster: 'mt1'
         });
@@ -102,31 +106,38 @@ app.controller("postresCtrl", function ($scope, $http) {
             console.log("Evento Pusher recibido:", data);
             buscarPostres();
         });
+    } else {
+        console.log("Pusher para postres ya está inicializado");
     }
 
     // Guardar/actualizar postre
     $(document).off("submit", "#frmPostre").on("submit", "#frmPostre", function (event) {
         event.preventDefault()
+        console.log("Formulario de postre enviado");
 
         // Deshabilitar botón durante el envío
         const $submitBtn = $(this).find('button[type="submit"]');
         $submitBtn.prop('disabled', true);
+        console.log("Botón de envío deshabilitado");
 
         $.post("/postre", {
             idPostre: $("#hiddenIdPostre").val() || "",
             nombrePostre: $("#txtNombre").val(),
             precio: $("#txtPrecio").val()
         }, function(response) {
-            console.log("Postre guardado:", response)
+            console.log("Postre guardado exitosamente:", response)
             limpiarFormularioPostre()
             buscarPostres()
             toast("Postre guardado correctamente", 3, function() {
-                console.log("Toast terminado")
+                console.log("Toast completado")
             })
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar postre:", error)
+            console.error("Status:", status)
+            console.error("Response:", xhr.responseText)
             alert("Error al guardar el postre")
         }).always(function() {
+            console.log("Rehabilitando botón de envío");
             $submitBtn.prop('disabled', false);
         })
     })
@@ -134,14 +145,20 @@ app.controller("postresCtrl", function ($scope, $http) {
     // Ver ingredientes de un postre
     $(document).off("click", ".btn-ingredientes").on("click", ".btn-ingredientes", function (event) {
         event.preventDefault();
+        console.log("Botón ver ingredientes clickeado");
         
         const id = $(this).data("idpostre");
-        console.log("ID capturado:", id);
+        console.log("ID del postre capturado:", id);
+        console.log("Elemento clickeado:", this);
+        console.log("Todos los data attributes:", $(this).data());
         
         if (id && id !== 'undefined' && id !== undefined) {
+            console.log(`Haciendo petición a: /postres/ingredientes/${id}`);
             $.get(`/postres/ingredientes/${id}`, function (html) {
+                console.log("Respuesta del servidor recibida:", html.substring(0, 100) + "...");
                 modal(html, "Ingredientes del Postre", [
                     {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
+                        console.log("Cerrando modal de ingredientes");
                         $(event.target).blur();
                         setTimeout(function() {
                             closeModal();
@@ -150,10 +167,12 @@ app.controller("postresCtrl", function ($scope, $http) {
                 ])
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar ingredientes:", error);
+                console.error("Status:", status);
+                console.error("Response:", xhr.responseText);
                 alert("Error al cargar ingredientes: " + error);
             });
         } else {
-            console.error("ID no encontrado");
+            console.error("ID no encontrado o es undefined");
             alert("Error: No se pudo obtener el ID del postre");
         }
     })
@@ -161,8 +180,10 @@ app.controller("postresCtrl", function ($scope, $http) {
     // Editar postre
     $(document).off("click", ".btn-editar-postre").on("click", ".btn-editar-postre", function (event) {
         const id = $(this).data("id")
+        console.log("Editando postre con ID:", id);
         
         $.get(`/postre/${id}`, function (data) {
+            console.log("Datos del postre recibidos:", data);
             if (data.length > 0) {
                 const postre = data[0]
                 $("#txtNombre").val(postre.nombrePostre)
@@ -172,6 +193,7 @@ app.controller("postresCtrl", function ($scope, $http) {
                     $("#frmPostre").prepend('<input type="hidden" id="hiddenIdPostre" name="idPostre">')
                 }
                 $("#hiddenIdPostre").val(postre.idPostre)
+                console.log("Formulario llenado para edición");
                 
                 $('html, body').animate({
                     scrollTop: $("#frmPostre").offset().top
@@ -179,6 +201,8 @@ app.controller("postresCtrl", function ($scope, $http) {
             }
         }).fail(function(xhr, status, error) {
             console.error("Error al cargar postre:", error)
+            console.error("Status:", status)
+            console.error("Response:", xhr.responseText)
             alert("Error al cargar los datos del postre")
         })
     })
@@ -187,20 +211,25 @@ app.controller("postresCtrl", function ($scope, $http) {
     $(document).off("click", ".btn-eliminar-postre").on("click", ".btn-eliminar-postre", function (event) {
         const id = $(this).data("id")
         const $btn = $(this);
+        console.log("Intentando eliminar postre con ID:", id);
         
         if (confirm("¿Está seguro de eliminar este postre?")) {
             $btn.prop('disabled', true);
+            console.log("Botón de eliminar deshabilitado");
             
             $.post("/postre/eliminar", {
                 id: id
             }, function(response) {
-                console.log("Postre eliminado:", response)
+                console.log("Postre eliminado exitosamente:", response)
                 buscarPostres()
                 toast("Postre eliminado correctamente", 3)
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar postre:", error)
+                console.error("Status:", status)
+                console.error("Response:", xhr.responseText)
                 alert("Error al eliminar el postre")
             }).always(function() {
+                console.log("Rehabilitando botón de eliminar");
                 $btn.prop('disabled', false);
             });
         }
@@ -208,32 +237,37 @@ app.controller("postresCtrl", function ($scope, $http) {
 
     // Cancelar edición
     $(document).off("click", "#btnCancelarPostre").on("click", "#btnCancelarPostre", function (event) {
+        console.log("Cancelando edición de postre");
         limpiarFormularioPostre()
     })
 })
 
 // ======================================
-// CONTROLLER DE INGREDIENTES - CORREGIDO
+// CONTROLLER DE INGREDIENTES - CORREGIDO PARA DESARROLLO
 // ======================================
 app.controller("ingredientesCtrl", function ($scope, $http) {
     function buscarIngredientes() {
+        console.log("Ejecutando buscarIngredientes()");
         $.get("/tbodyIngredientes", function (trsHTML) {
             $("#tbodyIngredientes").html(trsHTML)
+            console.log("Tabla de ingredientes actualizada");
         })
     }
 
     function limpiarFormularioIngrediente() {
+        console.log("Limpiando formulario de ingrediente");
         $("#frmIngredientes")[0].reset()
         $("#hiddenIdIngrediente").remove()
     }
 
     buscarIngredientes()
     
-    // Desactivar logging de Pusher para producción
-    Pusher.logToConsole = false;
+    // Mantener logging de Pusher para desarrollo/práctica
+    Pusher.logToConsole = true;
 
     // Verificación para evitar Pusher duplicado para ingredientes
     if (typeof window.pusherIngredientes === 'undefined') {
+        console.log("Inicializando Pusher para ingredientes");
         window.pusherIngredientes = new Pusher("48294aad3f28c3669613", {
             cluster: "us2"
         });
@@ -243,31 +277,38 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
             console.log("Evento Pusher ingredientes recibido:", data);
             buscarIngredientes();
         });
+    } else {
+        console.log("Pusher para ingredientes ya está inicializado");
     }
 
     // Guardar/actualizar ingrediente
     $(document).off("submit", "#frmIngredientes").on("submit", "#frmIngredientes", function (event) {
         event.preventDefault()
+        console.log("Formulario de ingrediente enviado");
 
         // Deshabilitar botón durante el envío
         const $submitBtn = $(this).find('button[type="submit"]');
         $submitBtn.prop('disabled', true);
+        console.log("Botón de envío deshabilitado");
 
         $.post("/ingrediente", {
             idIngrediente: $("#hiddenIdIngrediente").val() || "",
             nombreIngrediente: $("#txtNombre").val(),
             existencias: $("#txtExistencias").val()
         }, function(response) {
-            console.log("Ingrediente guardado:", response)
+            console.log("Ingrediente guardado exitosamente:", response)
             limpiarFormularioIngrediente()
             buscarIngredientes()
             toast("Ingrediente guardado correctamente", 3, function() {
-                console.log("Toast terminado")
+                console.log("Toast completado")
             })
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar ingrediente:", error)
+            console.error("Status:", status)
+            console.error("Response:", xhr.responseText)
             alert("Error al guardar el ingrediente")
         }).always(function() {
+            console.log("Rehabilitando botón de envío");
             $submitBtn.prop('disabled', false);
         })
     })
@@ -275,8 +316,10 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     // Editar ingrediente
     $(document).off("click", ".btn-editar-ingrediente").on("click", ".btn-editar-ingrediente", function (event) {
         const id = $(this).data("id")
+        console.log("Editando ingrediente con ID:", id);
         
         $.get(`/ingrediente/${id}`, function (data) {
+            console.log("Datos del ingrediente recibidos:", data);
             if (data.length > 0) {
                 const ingrediente = data[0]
                 $("#txtNombre").val(ingrediente.nombreIngrediente)
@@ -286,6 +329,7 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
                     $("#frmIngredientes").prepend('<input type="hidden" id="hiddenIdIngrediente" name="idIngrediente">')
                 }
                 $("#hiddenIdIngrediente").val(ingrediente.idIngrediente)
+                console.log("Formulario llenado para edición");
                 
                 $('html, body').animate({
                     scrollTop: $("#frmIngredientes").offset().top
@@ -293,6 +337,8 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
             }
         }).fail(function(xhr, status, error) {
             console.error("Error al cargar ingrediente:", error)
+            console.error("Status:", status)
+            console.error("Response:", xhr.responseText)
             alert("Error al cargar los datos del ingrediente")
         })
     })
@@ -301,20 +347,25 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     $(document).off("click", ".btn-eliminar-ingrediente").on("click", ".btn-eliminar-ingrediente", function (event) {
         const id = $(this).data("id")
         const $btn = $(this);
+        console.log("Intentando eliminar ingrediente con ID:", id);
         
         if (confirm("¿Está seguro de eliminar este ingrediente?")) {
             $btn.prop('disabled', true);
+            console.log("Botón de eliminar deshabilitado");
             
             $.post("/ingrediente/eliminar", {
                 id: id
             }, function(response) {
-                console.log("Ingrediente eliminado:", response)
+                console.log("Ingrediente eliminado exitosamente:", response)
                 buscarIngredientes()
                 toast("Ingrediente eliminado correctamente", 3)
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar ingrediente:", error)
+                console.error("Status:", status)
+                console.error("Response:", xhr.responseText)
                 alert("Error al eliminar el ingrediente")
             }).always(function() {
+                console.log("Rehabilitando botón de eliminar");
                 $btn.prop('disabled', false);
             });
         }
@@ -322,6 +373,7 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
 
     // Cancelar edición
     $(document).off("click", "#btnCancelarIngrediente").on("click", "#btnCancelarIngrediente", function (event) {
+        console.log("Cancelando edición de ingrediente");
         limpiarFormularioIngrediente()
     })
 })
@@ -333,6 +385,8 @@ const DateTime = luxon.DateTime
 let lxFechaHora
 
 document.addEventListener("DOMContentLoaded", function (event) {
+    console.log("DOM cargado completamente");
+    
     const configFechaHora = {
         locale: "es",
         weekNumbers: true,
@@ -345,6 +399,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
     }
 
     activeMenuOption(location.hash)
+    console.log("Menú activo configurado para:", location.hash);
 })
 
 // ======================================
@@ -353,6 +408,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 // Función mejorada para cerrar modal sin errores de aria-hidden
 function closeModalFixed() {
+    console.log("Cerrando modal con función mejorada");
     // Quitar focus de cualquier elemento dentro del modal
     $('#modal-message').find(':focus').blur();
     
@@ -366,13 +422,17 @@ function closeModalFixed() {
         
         // Devolver focus al body
         $('body').focus();
+        console.log("Modal cerrado exitosamente");
     }, 10);
 }
 
 // Manejo de eventos de Bootstrap para evitar problemas de aria-hidden
 $(document).ready(function() {
+    console.log("Configurando eventos del modal");
+    
     // Cuando el modal se está ocultando
     $(document).on('hide.bs.modal', '#modal-message', function (e) {
+        console.log("Modal ocultándose");
         // Quitar focus de todos los elementos dentro del modal
         $(this).find(':focus').blur();
         
@@ -382,8 +442,8 @@ $(document).ready(function() {
     
     // Cuando el modal se ha ocultado completamente
     $(document).on('hidden.bs.modal', '#modal-message', function (e) {
+        console.log("Modal completamente oculto");
         // Limpiar cualquier focus residual
         $('body').focus();
     });
 });
-
