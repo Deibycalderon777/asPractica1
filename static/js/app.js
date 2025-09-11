@@ -70,7 +70,7 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
 
 app.controller("appCtrl", function ($scope, $http) {
 })
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ======================================
 // CONTROLLER DE POSTRES
 // ======================================
@@ -229,7 +229,7 @@ app.controller("postresCtrl", function ($scope, $http) {
         limpiarFormularioPostre()
     })
 })
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ======================================
 // CONTROLLER DE INGREDIENTES
 // ======================================
@@ -370,6 +370,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
 
 
