@@ -147,16 +147,14 @@ app.controller("postresCtrl", function ($scope, $http) {
     // Ver ingredientes de un postre
     $(document).off("click", ".btn-ingredientes").on("click", ".btn-ingredientes", function (event) {
         event.preventDefault();
-        
         // Usar minúsculas porque jQuery convierte automáticamente
         const id = $(this).data("idpostre");
-        
         console.log("ID capturado:", id);
-        
         if (id && id !== 'undefined' && id !== undefined) {
             $.get(`/postres/ingredientes/${id}`, function (html) {
                 modal(html, "Ingredientes del Postre", [
                     {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
+                        $(event.target).blur();
                         closeModal()
                     }}
                 ])
@@ -370,6 +368,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
 
 
