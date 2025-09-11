@@ -90,7 +90,23 @@ app.controller("postresCtrl", function ($scope, $http) {
     buscarPostres() 
     
     // Enable pusher logging - don't include this in production
+
     Pusher.logToConsole = true
+    ////////////////////////////////////////////////////////se agrego esta lineas de codigo, quitar si no funciona
+     // AGREGAR VERIFICACIÓN PARA EVITAR PUSHER DUPLICADO:
+    if (typeof window.pusherPostres === 'undefined') {
+        window.pusherPostres = new Pusher('df675041e275bafce4a7', {
+            cluster: 'mt1'
+        });
+
+        var channel = window.pusherPostres.subscribe("canalPostres");
+        channel.bind("eventoPostres", function(data) {
+            console.log("Evento Pusher recibido:", data);
+            buscarPostres();
+        });
+    }
+
+    ///////////////////////////////////////////////////////////
 
    var pusher = new Pusher('df675041e275bafce4a7', {
       cluster: 'mt1'
@@ -127,17 +143,31 @@ app.controller("postresCtrl", function ($scope, $http) {
         })
     })
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// se agrego estas lineas de codigo para poder cerrar el modal correctamente 
     // Ver ingredientes de un postre
-    $(document).on("click", ".btn-ingredientes", function (event) {
-        const id = $(this).data("idpostre")
-
-        $.get(`/postres/ingredientes/${id}`, function (html) {
-            modal(html, "Ingredientes del Postre", [
-                {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
-                    closeModal()
-                }}
-            ])
-        })
+    $(document).off("click", ".btn-ingredientes").on("click", ".btn-ingredientes", function (event) {
+        event.preventDefault();
+        
+        // Usar minúsculas porque jQuery convierte automáticamente
+        const id = $(this).data("idpostre");
+        
+        console.log("ID capturado:", id);
+        
+        if (id && id !== 'undefined' && id !== undefined) {
+            $.get(`/postres/ingredientes/${id}`, function (html) {
+                modal(html, "Ingredientes del Postre", [
+                    {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
+                        closeModal()
+                    }}
+                ])
+            }).fail(function(xhr, status, error) {
+                console.error("Error al cargar ingredientes:", error);
+                alert("Error al cargar ingredientes: " + error);
+            });
+        } else {
+            console.error("ID no encontrado");
+            alert("Error: No se pudo obtener el ID del postre");
+        }
     })
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Editar postre
@@ -166,12 +196,17 @@ app.controller("postresCtrl", function ($scope, $http) {
             alert("Error al cargar los datos del postre")
         })
     })
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+   // se reemplazo esta linea de codigo para evitar que se dupliquen eventos 
     // Eliminar postre
-    $(document).on("click", ".btn-eliminar-postre", function (event) {
+    $(document).off("click", ".btn-eliminar-postre").on("click", ".btn-eliminar-postre", function (event) {
         const id = $(this).data("id")
+        const $btn = $(this); // Guardar referencia al botón
         
         if (confirm("¿Está seguro de eliminar este postre?")) {
+            // Deshabilitar el botón durante la petición
+            $btn.prop('disabled', true);
+            
             $.post("/postre/eliminar", {
                 id: id
             }, function(response) {
@@ -181,10 +216,14 @@ app.controller("postresCtrl", function ($scope, $http) {
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar postre:", error)
                 alert("Error al eliminar el postre")
-            })
+            }).always(function() {
+                // Rehabilitar el botón
+                $btn.prop('disabled', false);
+            });
         }
     })
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Cancelar edición
     $(document).on("click", "#btnCancelarPostre", function (event) {
         limpiarFormularioPostre()
@@ -299,6 +338,35 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     })
 })
 
+
+///////////////////////////////////////////////////////
+// es para quitar el error hiden que causa el modal 
+// Función mejorada para cerrar modal (si tienes problemas de aria-hidden)
+function closeModalImproved() {
+    // Remover aria-hidden antes de cerrar
+    $('#modal-message').removeAttr('aria-hidden');
+    
+    // Cerrar el modal
+    $('#modal-message').modal('hide');
+    
+    // Devolver focus al body para evitar problemas
+    $('body').focus();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////
+
+
 // ======================================
 // CONFIGURACIÓN DE FECHA Y HORA
 // ======================================
@@ -319,6 +387,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
 
 
