@@ -339,19 +339,6 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
 })
 
 
-///////////////////////////////////////////////////////
-// es para quitar el error hiden que causa el modal 
-// Función mejorada para cerrar modal (si tienes problemas de aria-hidden)
-function closeModalImproved() {
-    // Remover aria-hidden antes de cerrar
-    $('#modal-message').removeAttr('aria-hidden');
-    
-    // Cerrar el modal
-    $('#modal-message').modal('hide');
-    
-    // Devolver focus al body para evitar problemas
-    $('body').focus();
-}
 
 
 
@@ -361,11 +348,7 @@ function closeModalImproved() {
 
 
 
-
-
-
-/////////////////////////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ======================================
 // CONFIGURACIÓN DE FECHA Y HORA
@@ -387,6 +370,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
 
 
