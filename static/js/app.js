@@ -127,52 +127,18 @@ app.controller("postresCtrl", function ($scope, $http) {
         })
     })
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Ver ingredientes de un postre - VERSION CON DEBUG
-$(document).on("click", ".btn-ingredientes", function (event) {
-    event.preventDefault(); // Prevenir cualquier comportamiento por defecto
-    
-    console.log("=== DEBUG MODAL INGREDIENTES ===");
-    console.log("Elemento clickeado:", this);
-    console.log("Clases del elemento:", this.className);
-    console.log("HTML del elemento:", this.outerHTML);
-    
-    // Probar diferentes formas de obtener el ID
-    const idPostre1 = $(this).data("idPostre");
-    const idPostre2 = $(this).attr("data-idPostre");
-    const idPostre3 = this.getAttribute("data-idPostre");
-    
-    console.log("ID con .data('idPostre'):", idPostre1);
-    console.log("ID con .attr('data-idPostre'):", idPostre2);
-    console.log("ID con getAttribute('data-idPostre'):", idPostre3);
-    console.log("Todos los data attributes:", $(this).data());
-    
-    // Usar el ID que funcione
-    const id = idPostre1 || idPostre2 || idPostre3;
-    console.log("ID final a usar:", id);
-    
-    if (id && id !== 'undefined' && id !== undefined) {
-        console.log(`Haciendo petición a: /postres/ingredientes/${id}`);
-        
+    // Ver ingredientes de un postre
+    $(document).on("click", ".btn-ingredientes", function (event) {
+        const id = $(this).data("idpostre")
+
         $.get(`/postres/ingredientes/${id}`, function (html) {
-            console.log("Respuesta del servidor recibida:", html);
             modal(html, "Ingredientes del Postre", [
                 {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
                     closeModal()
                 }}
             ])
-        }).fail(function(xhr, status, error) {
-            console.error("Error en la petición:", error);
-            console.error("Status:", status);
-            console.error("Response:", xhr.responseText);
-            alert("Error al cargar ingredientes: " + error);
-        });
-    } else {
-        console.error("ID no encontrado o es undefined");
-        alert("Error: No se pudo obtener el ID del postre");
-    }
-    
-    console.log("=== FIN DEBUG ===");
-});
+        })
+    })
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Editar postre
     $(document).on("click", ".btn-editar-postre", function (event) {
@@ -353,6 +319,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     activeMenuOption(location.hash)
 })
+
 
 
 
