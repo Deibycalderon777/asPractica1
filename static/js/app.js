@@ -89,7 +89,7 @@ app.controller("postresCtrl", function ($scope, $http) {
     buscarPostres() 
     
     // Desactivar logging de Pusher para producción
-    Pusher.logToConsole = false;
+    Pusher.logToConsole = true;
 
     // Verificación para evitar Pusher duplicado
     if (typeof window.pusherPostres === 'undefined') {
@@ -386,3 +386,4 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
+
