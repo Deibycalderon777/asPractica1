@@ -70,7 +70,73 @@ def app2():
         con.reconnect()
     con.close()
     return "<h5>Hola, soy la view app</h5>"
+@app.route("/login", methods=["POST"])
+def login():
+    if not con.is_connected():
+        con.reconnect()
+    
+    usuario = request.form["usuario"]
+    contrasena = request.form["contrasena"]
+    
+    cursor = con.cursor(dictionary=True)
+    sql = """
+    SELECT Id, Nombre_Usuario, Correo_Electronico
+    FROM usuarios 
+    WHERE (Nombre_Usuario = %s OR Correo_Electronico = %s) 
+    AND Contrasena = %s
+    """
+    
+    cursor.execute(sql, (usuario, usuario, contrasena))
+    usuario_encontrado = cursor.fetchone()
+    con.close()
+    
+    if usuario_encontrado:
+        # Guardar datos del usuario en la sesión
+        session['user_id'] = usuario_encontrado['Id']
+        session['username'] = usuario_encontrado['Nombre_Usuario']
+        session['email'] = usuario_encontrado['Correo_Electronico']
+        session['logged_in'] = True
+        
+        return make_response(jsonify({
+            "success": True, 
+            "message": "Login exitoso",
+            "user": {
+                "id": usuario_encontrado['Id'],
+                "username": usuario_encontrado['Nombre_Usuario'],
+                "email": usuario_encontrado['Correo_Electronico']
+            }
+        }))
+    else:
+        return make_response(jsonify({
+            "success": False, 
+            "message": "Usuario o contraseña incorrectos"
+        }), 401)
 
+# NUEVA RUTA PARA LOGOUT - Agregar esto a tu app.py
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return make_response(jsonify({
+        "success": True, 
+        "message": "Logout exitoso"
+    }))
+
+# NUEVA RUTA PARA VERIFICAR SESIÓN - Agregar esto a tu app.py
+@app.route("/verificar_sesion", methods=["GET"])
+def verificar_sesion():
+    if 'logged_in' in session and session['logged_in']:
+        return make_response(jsonify({
+            "logged_in": True,
+            "user": {
+                "id": session.get('user_id'),
+                "username": session.get('username'),
+                "email": session.get('email')
+            }
+        }))
+    else:
+        return make_response(jsonify({
+            "logged_in": False
+        }))
 # RUTAS PARA POSTRES
 @app.route("/postres")
 def postres():
@@ -364,5 +430,6 @@ def buscarIngredientes():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
