@@ -26,7 +26,7 @@ con = mysql.connector.connect(
 
 app = Flask(__name__)
 # agrege esta linea de codigo para usar una clave secreta
-app.secret_key = 'tu-clave-secreta-para-sesiones'
+app.secret_key = '25021996'
 CORS(app)
 
 def pusherPostres():
@@ -430,6 +430,7 @@ def buscarIngredientes():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 
