@@ -14,8 +14,8 @@ app.config(function ($routeProvider, $locationProvider) {
 
     $routeProvider
     .when("/", {
-        templateUrl: "/app",
-        controller: "appCtrl"
+        templateUrl: "/",
+        controller: "loginCtrl"
     })
     .when("/postres", {
         templateUrl: "/postres",
@@ -68,7 +68,8 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
     })
 }])
 
-app.controller("appCtrl", function ($scope, $http) {
+app.controller("loginCtrl", function ($scope, $http) {
+    
 })
 
 // ======================================
@@ -447,3 +448,4 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
+
