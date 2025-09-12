@@ -14,8 +14,8 @@ app.config(function ($routeProvider, $locationProvider) {
 
     $routeProvider
     .when("/", {
-        templateUrl: "/",
-        controller: "loginCtrl"
+        templateUrl: "/app",
+        controller: "appCtrl"
     })
     .when("/postres", {
         templateUrl: "/postres",
@@ -43,144 +43,6 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
     $rootScope.slide = ""
 
     actualizarFechaHora()
-    app.controller("loginCtrl", function ($scope, $http, $location) {
-    console.log("Controller loginCtrl cargado");
-    
-    // Variables del scope
-    $scope.usuario = "";
-    $scope.contrasena = "";
-    $scope.mensaje = "";
-    $scope.cargando = false;
-    
-    // Verificar si ya está logueado al cargar la página
-    $scope.verificarSesion = function() {
-        console.log("Verificando sesión...");
-        
-        $http.get("/verificar_sesion")
-        .then(function(response) {
-            console.log("Respuesta verificar sesión:", response.data);
-            
-            if (response.data.logged_in) {
-                // Ya está logueado, redirigir a postres
-                console.log("Usuario ya logueado, redirigiendo...");
-                $location.path("/postres");
-            }
-        })
-        .catch(function(error) {
-            console.log("Error verificando sesión:", error);
-        });
-    };
-    
-    // Función de login
-    $scope.login = function() {
-        console.log("Ejecutando login...");
-        console.log("Usuario:", $scope.usuario);
-        console.log("Contraseña:", $scope.contrasena);
-        
-        // Validaciones básicas
-        if (!$scope.usuario || !$scope.contrasena) {
-            $scope.mensaje = "Por favor, completa todos los campos";
-            return;
-        }
-        
-        // Activar estado de carga
-        $scope.cargando = true;
-        $scope.mensaje = "";
-        
-        // Preparar datos para enviar
-        var datos = {
-            usuario: $scope.usuario,
-            contrasena: $scope.contrasena
-        };
-        
-        // Hacer petición POST al servidor
-        $http({
-            method: 'POST',
-            url: '/login',
-            data: $.param(datos),  // Convertir a formato form-data
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        })
-        .then(function(response) {
-            console.log("Login exitoso:", response.data);
-            
-            // Mostrar mensaje de éxito
-            $scope.mensaje = response.data.message || "¡Bienvenido!";
-            
-            // Limpiar formulario
-            $scope.usuario = "";
-            $scope.contrasena = "";
-            
-            // Redirigir a la página de postres después de 1 segundo
-            setTimeout(function() {
-                $location.path("/postres");
-                $scope.$apply(); // Necesario para que Angular detecte el cambio
-            }, 1000);
-        })
-        .catch(function(error) {
-            console.log("Error en login:", error);
-            
-            if (error.data && error.data.message) {
-                $scope.mensaje = error.data.message;
-            } else {
-                $scope.mensaje = "Error al iniciar sesión. Intenta de nuevo.";
-            }
-        })
-        .finally(function() {
-            $scope.cargando = false;
-        });
-    };
-    
-    // Función de logout (para usar en otras partes de la app)
-    $scope.logout = function() {
-        console.log("Ejecutando logout...");
-        
-        $http.post("/logout")
-        .then(function(response) {
-            console.log("Logout exitoso:", response.data);
-            $location.path("/");
-        })
-        .catch(function(error) {
-            console.log("Error en logout:", error);
-            // Aunque falle, redirigir al login
-            $location.path("/");
-        });
-    };
-    
-    // Verificar sesión al cargar el controller
-    $scope.verificarSesion();
-});
-
-// OPCIONAL: Agregar función global de logout para usar en el menú
-// Agregar esto al final de tu app.js:
-
-app.run(["$rootScope", "$location", "$timeout", "$http", function($rootScope, $location, $timeout, $http) {
-    // Tu código existente de fecha/hora...
-    function actualizarFechaHora() {
-        lxFechaHora = DateTime
-        .now()
-        .setLocale("es")
-
-        $rootScope.angularjsHora = lxFechaHora.toFormat("hh:mm:ss a")
-        $timeout(actualizarFechaHora, 1000)
-    }
-
-    $rootScope.slide = ""
-    actualizarFechaHora()
-
-    // NUEVO: Función global de logout
-    $rootScope.logout = function() {
-        console.log("Logout global ejecutado");
-        
-        $http.post("/logout")
-        .then(function(response) {
-            console.log("Logout exitoso");
-            $location.path("/");
-        })
-        .catch(function(error) {
-            console.log("Error en logout:", error);
-            $location.path("/");
-        });
-    };
 
     $rootScope.$on("$routeChangeSuccess", function (event, current, previous) {
         $("html").css("overflow-x", "hidden")
@@ -206,8 +68,7 @@ app.run(["$rootScope", "$location", "$timeout", "$http", function($rootScope, $l
     })
 }])
 
-app.controller("loginCtrl", function ($scope, $http) {
-    
+app.controller("appCtrl", function ($scope, $http) {
 })
 
 // ======================================
@@ -586,5 +447,3 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
-
-
