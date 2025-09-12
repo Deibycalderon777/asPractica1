@@ -8,6 +8,8 @@ from flask import Flask
 from flask import render_template
 from flask import request
 from flask import jsonify, make_response
+# se agrego la libreria/paquete de sesion de flask
+from flask import session
 
 import mysql.connector
 import datetime
@@ -23,6 +25,8 @@ con = mysql.connector.connect(
 )
 
 app = Flask(__name__)
+# agrege esta linea de codigo para usar una clave secreta
+app.secret_key = 'tu-clave-secreta-para-sesiones'
 CORS(app)
 
 def pusherPostres():
@@ -360,4 +364,5 @@ def buscarIngredientes():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
