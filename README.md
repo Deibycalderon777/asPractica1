@@ -1,1 +1,1 @@
-Antes de hacer cualquier edicion por favor realiza un backup 
+proyecto realizado con la arquitectura de capaz
