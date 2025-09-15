@@ -23,23 +23,19 @@
 <form id="frmIngredientes" method="post">
     <div class="mb-1">
         <label>Nombre Ingrediente</label>
-        <input type="text" class="form-control" id="txtNombre" name="txtNombre" required>
+        <input type="text" class="form-control" id="txtNombre" name="txtNombre">
     </div>
     <div class="mb-1">
         <label>Existencias</label>
-        <input type="number" class="form-control" id="txtExistencias" name="txtExistencias" step="0.1" min="0" required>
+        <input type="number" class="form-control" id="txtExistencias" name="txtExistencias">
     </div>
-        
     
     <div class="mb-1 text-end">
-    <button class="btn btn-primary">Guardar</button>
-     </div>
-
+     <button class="btn btn-success">Guardar</button>
+    </div>
     <div class="mb-1 text-end">
-    <button type="button" class="btn btn-secondary" id="btnCancelarIngrediente">Cancelar</button>
-     </div>
-    
-
+     <button type="button" class="btn btn-secondary" id="btnCancelarIngrediente">Cancelar</button>
+    </div>
 </form>
 
 <div class="table-responsive">
