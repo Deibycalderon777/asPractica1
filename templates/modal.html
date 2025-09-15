@@ -3,14 +3,19 @@
         <thead class="table-active">
             <tr>
                 <th>Nombre</th>
+                   <th>Cantidad</th>
                 <th>Existencias</th>
+                   
+                cantidad
             </tr>
         </thead>
         <tbody>
             {% for postreIngrediente in postresIngredientes %}
             <tr>
                 <td>{{ postreIngrediente.nombreIngrediente}}</td>
-                <td>{{ postreIngrediente.existencias }}</td>
+                  <td>{{ postreIngrediente.cantidad}}</td>
+                  <td>{{ postreIngrediente.existencias }}</td>
+               
             </tr>
             {% endfor %}
         </tbody>
