@@ -72,29 +72,92 @@ app.controller("appCtrl", function ($scope, $http) {
 })
 
 // ======================================
-// CONTROLLER DE POSTRES - CORREGIDO PARA DESARROLLO
+// CONTROLLER DE POSTRES CON BÚSQUEDA INTEGRADA
 // ======================================
 app.controller("postresCtrl", function ($scope, $http) {
-    function buscarPostres() {
-        console.log("Ejecutando buscarPostres()");
-        $.get("/tbodyPostres", function (trsHTML) {
-            $("#tbodyPostres").html(trsHTML)
-            console.log("Tabla de postres actualizada");
-        })
+    let timeoutPostres;
+    
+    // Función principal de búsqueda de postres
+    function buscarPostres(termino = "") {
+        console.log("Ejecutando buscarPostres() con término:", termino);
+        
+        if (termino.trim() === "") {
+            // Cargar todos los postres
+            $.get("/tbodyPostres", function (trsHTML) {
+                $("#tbodyPostres").html(trsHTML);
+                console.log("Tabla de postres actualizada sin filtro");
+            }).fail(function(xhr, status, error) {
+                console.error("Error al cargar postres:", error);
+                $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-danger'>Error al cargar postres</td></tr>");
+            });
+        } else {
+            // Buscar con filtro
+            $.get("/postres/buscar", {
+                busqueda: termino
+            }, function (postres) {
+                console.log("Resultados de búsqueda postres:", postres);
+                
+                if (postres.length === 0) {
+                    $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-muted'><i class='bi bi-search'></i> No se encontraron postres con ese criterio</td></tr>");
+                } else {
+                    // Construir HTML de la tabla
+                    let html = "";
+                    postres.forEach(function(postre) {
+                        html += `
+                            <tr>
+                                <td>${postre.idPostre}</td>
+                                <td>${postre.nombrePostre}</td>
+                                <td>$${postre.precio}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-info btn-ingredientes" 
+                                                data-idpostre="${postre.idPostre}"
+                                                title="Ver ingredientes">
+                                            <i class="bi bi-list-ul"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-editar-postre" 
+                                                data-id="${postre.idPostre}"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-eliminar-postre" 
+                                                data-id="${postre.idPostre}"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    $("#tbodyPostres").html(html);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error("Error en búsqueda de postres:", error);
+                $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-danger'><i class='bi bi-exclamation-triangle'></i> Error en la búsqueda</td></tr>");
+            });
+        }
+    }
+
+    // Función con debounce para búsqueda
+    function buscarPostresDebounced(termino) {
+        clearTimeout(timeoutPostres);
+        timeoutPostres = setTimeout(function() {
+            buscarPostres(termino);
+        }, 300);
     }
 
     function limpiarFormularioPostre() {
         console.log("Limpiando formulario de postre");
-        $("#frmPostre")[0].reset()
-        $("#hiddenIdPostre").remove()
+        $("#frmPostre")[0].reset();
+        $("#hiddenIdPostre").remove();
     }
 
-    buscarPostres() 
+    // Cargar postres inicialmente
+    buscarPostres();
     
-    // Mantener logging de Pusher para desarrollo/práctica
+    // Configuración de Pusher para postres
     Pusher.logToConsole = true;
-
-    // Verificación para evitar Pusher duplicado
     if (typeof window.pusherPostres === 'undefined') {
         console.log("Inicializando Pusher para postres");
         window.pusherPostres = new Pusher('df675041e275bafce4a7', {
@@ -104,43 +167,52 @@ app.controller("postresCtrl", function ($scope, $http) {
         var channel = window.pusherPostres.subscribe("canalPostres");
         channel.bind("eventoPostres", function(data) {
             console.log("Evento Pusher recibido:", data);
-            buscarPostres();
+            // Mantener el término de búsqueda actual al actualizar
+            const terminoBusqueda = $("#txtBuscarPostre").val() || "";
+            buscarPostres(terminoBusqueda);
         });
-    } else {
-        console.log("Pusher para postres ya está inicializado");
     }
+
+    // Event listener para búsqueda en tiempo real
+    $(document).off("input", "#txtBuscarPostre").on("input", "#txtBuscarPostre", function() {
+        const termino = $(this).val();
+        console.log("Término de búsqueda de postre:", termino);
+        buscarPostresDebounced(termino);
+    });
+    
+    // Event listener para limpiar búsqueda
+    $(document).off("click", "#btnLimpiarPostre").on("click", "#btnLimpiarPostre", function() {
+        console.log("Limpiando búsqueda de postres");
+        $("#txtBuscarPostre").val("");
+        buscarPostres("");
+    });
 
     // Guardar/actualizar postre
     $(document).off("submit", "#frmPostre").on("submit", "#frmPostre", function (event) {
-        event.preventDefault()
+        event.preventDefault();
         console.log("Formulario de postre enviado");
 
-        // Deshabilitar botón durante el envío
         const $submitBtn = $(this).find('button[type="submit"]');
         $submitBtn.prop('disabled', true);
-        console.log("Botón de envío deshabilitado");
 
         $.post("/postre", {
             idPostre: $("#hiddenIdPostre").val() || "",
             nombrePostre: $("#txtNombre").val(),
             precio: $("#txtPrecio").val()
         }, function(response) {
-            console.log("Postre guardado exitosamente:", response)
-            limpiarFormularioPostre()
-            buscarPostres()
-            toast("Postre guardado correctamente", 3, function() {
-                console.log("Toast completado")
-            })
+            console.log("Postre guardado exitosamente:", response);
+            limpiarFormularioPostre();
+            // Mantener búsqueda activa después de guardar
+            const terminoBusqueda = $("#txtBuscarPostre").val() || "";
+            buscarPostres(terminoBusqueda);
+            toast("Postre guardado correctamente", 3);
         }).fail(function(xhr, status, error) {
-            console.error("Error al guardar postre:", error)
-            console.error("Status:", status)
-            console.error("Response:", xhr.responseText)
-            alert("Error al guardar el postre")
+            console.error("Error al guardar postre:", error);
+            alert("Error al guardar el postre");
         }).always(function() {
-            console.log("Rehabilitando botón de envío");
             $submitBtn.prop('disabled', false);
-        })
-    })
+        });
+    });
 
     // Ver ingredientes de un postre
     $(document).off("click", ".btn-ingredientes").on("click", ".btn-ingredientes", function (event) {
@@ -149,98 +221,92 @@ app.controller("postresCtrl", function ($scope, $http) {
         
         const id = $(this).data("idpostre");
         console.log("ID del postre capturado:", id);
-        console.log("Elemento clickeado:", this);
-        console.log("Todos los data attributes:", $(this).data());
         
         if (id && id !== 'undefined' && id !== undefined) {
-            console.log(`Haciendo petición a: /postres/ingredientes/${id}`);
             $.get(`/postres/ingredientes/${id}`, function (html) {
-                console.log("Respuesta del servidor recibida:", html.substring(0, 100) + "...");
+                console.log("Ingredientes cargados exitosamente");
                 modal(html, "Ingredientes del Postre", [
-                    {html: "Cerrar", class: "btn btn-secondary", fun: function (event) {
-                        console.log("Cerrando modal de ingredientes");
-                        $(event.target).blur();
-                        setTimeout(function() {
-                            closeModal();
-                        }, 10);
-                    }}
-                ])
+                    {
+                        html: '<i class="bi bi-x-circle"></i> Cerrar', 
+                        class: "btn btn-secondary", 
+                        fun: function (event) {
+                            console.log("Cerrando modal de ingredientes");
+                            $(event.target).blur();
+                            setTimeout(closeModal, 10);
+                        }
+                    }
+                ]);
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar ingredientes:", error);
-                console.error("Status:", status);
-                console.error("Response:", xhr.responseText);
                 alert("Error al cargar ingredientes: " + error);
             });
         } else {
-            console.error("ID no encontrado o es undefined");
+            console.error("ID no encontrado");
             alert("Error: No se pudo obtener el ID del postre");
         }
-    })
+    });
 
     // Editar postre
     $(document).off("click", ".btn-editar-postre").on("click", ".btn-editar-postre", function (event) {
-        const id = $(this).data("id")
+        const id = $(this).data("id");
         console.log("Editando postre con ID:", id);
         
         $.get(`/postre/${id}`, function (data) {
             console.log("Datos del postre recibidos:", data);
             if (data.length > 0) {
-                const postre = data[0]
-                $("#txtNombre").val(postre.nombrePostre)
-                $("#txtPrecio").val(postre.precio)
+                const postre = data[0];
+                $("#txtNombre").val(postre.nombrePostre);
+                $("#txtPrecio").val(postre.precio);
                 
                 if ($("#hiddenIdPostre").length === 0) {
-                    $("#frmPostre").prepend('<input type="hidden" id="hiddenIdPostre" name="idPostre">')
+                    $("#frmPostre").prepend('<input type="hidden" id="hiddenIdPostre" name="idPostre">');
                 }
-                $("#hiddenIdPostre").val(postre.idPostre)
+                $("#hiddenIdPostre").val(postre.idPostre);
                 console.log("Formulario llenado para edición");
                 
                 $('html, body').animate({
                     scrollTop: $("#frmPostre").offset().top
-                }, 500)
+                }, 500);
             }
         }).fail(function(xhr, status, error) {
-            console.error("Error al cargar postre:", error)
-            console.error("Status:", status)
-            console.error("Response:", xhr.responseText)
-            alert("Error al cargar los datos del postre")
-        })
-    })
+            console.error("Error al cargar postre:", error);
+            alert("Error al cargar los datos del postre");
+        });
+    });
 
     // Eliminar postre
     $(document).off("click", ".btn-eliminar-postre").on("click", ".btn-eliminar-postre", function (event) {
-        const id = $(this).data("id")
+        const id = $(this).data("id");
         const $btn = $(this);
         console.log("Intentando eliminar postre con ID:", id);
         
         if (confirm("¿Está seguro de eliminar este postre?")) {
             $btn.prop('disabled', true);
-            console.log("Botón de eliminar deshabilitado");
             
             $.post("/postre/eliminar", {
                 id: id
             }, function(response) {
-                console.log("Postre eliminado exitosamente:", response)
-                buscarPostres()
-                toast("Postre eliminado correctamente", 3)
+                console.log("Postre eliminado exitosamente:", response);
+                // Mantener búsqueda activa después de eliminar
+                const terminoBusqueda = $("#txtBuscarPostre").val() || "";
+                buscarPostres(terminoBusqueda);
+                toast("Postre eliminado correctamente", 3);
             }).fail(function(xhr, status, error) {
-                console.error("Error al eliminar postre:", error)
-                console.error("Status:", status)
-                console.error("Response:", xhr.responseText)
-                alert("Error al eliminar el postre")
+                console.error("Error al eliminar postre:", error);
+                alert("Error al eliminar el postre");
             }).always(function() {
-                console.log("Rehabilitando botón de eliminar");
                 $btn.prop('disabled', false);
             });
         }
-    })
+    });
 
     // Cancelar edición
     $(document).off("click", "#btnCancelarPostre").on("click", "#btnCancelarPostre", function (event) {
         console.log("Cancelando edición de postre");
-        limpiarFormularioPostre()
-    })
-})
+        limpiarFormularioPostre();
+    });
+});
+
 
 // ======================================
 // CONTROLLER DE INGREDIENTES - CORREGIDO PARA DESARROLLO
@@ -447,3 +513,4 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
+
