@@ -1,3 +1,23 @@
+<div class="mb-3">
+    <div class="input-group">
+        <span class="input-group-text">
+            <i class="bi bi-search"></i>
+        </span>
+        <input type="text" 
+               class="form-control" 
+               id="txtBuscarPostre" 
+               placeholder="Buscar postres por nombre o precio...">
+        <button type="button" 
+                class="btn btn-outline-secondary" 
+                id="btnLimpiarPostre"
+                title="Limpiar búsqueda">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+    <small class="text-muted">💡 Escribe para buscar en tiempo real</small>
+</div>
+
+
 <form id="frmPostre" method="post">
     <div class="mb-1">
         <label>Nombre Postre</label>
@@ -37,6 +57,7 @@
         <tbody id="tbodyPostres"></tbody>
     </table>
 </div>
+
 
 
 
