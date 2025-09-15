@@ -307,31 +307,98 @@ app.controller("postresCtrl", function ($scope, $http) {
     });
 });
 
-
 // ======================================
-// CONTROLLER DE INGREDIENTES - CORREGIDO PARA DESARROLLO
+// CONTROLLER DE INGREDIENTES CON BÚSQUEDA INTEGRADA
 // ======================================
 app.controller("ingredientesCtrl", function ($scope, $http) {
-    function buscarIngredientes() {
-        console.log("Ejecutando buscarIngredientes()");
-        $.get("/tbodyIngredientes", function (trsHTML) {
-            $("#tbodyIngredientes").html(trsHTML)
-            console.log("Tabla de ingredientes actualizada");
-        })
+    let timeoutIngredientes;
+    
+    // Función principal de búsqueda de ingredientes
+    function buscarIngredientes(termino = "") {
+        console.log("Ejecutando buscarIngredientes() con término:", termino);
+        
+        if (termino.trim() === "") {
+            // Cargar todos los ingredientes
+            $.get("/tbodyIngredientes", function (trsHTML) {
+                $("#tbodyIngredientes").html(trsHTML);
+                console.log("Tabla de ingredientes actualizada sin filtro");
+            }).fail(function(xhr, status, error) {
+                console.error("Error al cargar ingredientes:", error);
+                $("#tbodyIngredientes").html("<tr><td colspan='4' class='text-center text-danger'>Error al cargar ingredientes</td></tr>");
+            });
+        } else {
+            // Buscar con filtro
+            $.get("/ingredientes/buscar", {
+                busqueda: termino
+            }, function (ingredientes) {
+                console.log("Resultados de búsqueda ingredientes:", ingredientes);
+                
+                if (ingredientes.length === 0) {
+                    $("#tbodyIngredientes").html("<tr><td colspan='4' class='text-center text-muted'><i class='bi bi-search'></i> No se encontraron ingredientes con ese criterio</td></tr>");
+                } else {
+                    // Construir HTML de la tabla
+                    let html = "";
+                    ingredientes.forEach(function(ingrediente) {
+                        // Determinar color del badge según existencias
+                        let badgeClass = "bg-success";
+                        if (ingrediente.existencias < 10) {
+                            badgeClass = "bg-danger";
+                        } else if (ingrediente.existencias < 50) {
+                            badgeClass = "bg-warning text-dark";
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${ingrediente.idIngrediente}</td>
+                                <td>${ingrediente.nombreIngrediente}</td>
+                                <td>
+                                    <span class="badge ${badgeClass}">${ingrediente.existencias} unidades</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-warning btn-editar-ingrediente" 
+                                                data-id="${ingrediente.idIngrediente}"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-eliminar-ingrediente" 
+                                                data-id="${ingrediente.idIngrediente}"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    $("#tbodyIngredientes").html(html);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error("Error en búsqueda de ingredientes:", error);
+                $("#tbodyIngredientes").html("<tr><td colspan='4' class='text-center text-danger'><i class='bi bi-exclamation-triangle'></i> Error en la búsqueda</td></tr>");
+            });
+        }
+    }
+
+    // Función con debounce para búsqueda
+    function buscarIngredientesDebounced(termino) {
+        clearTimeout(timeoutIngredientes);
+        timeoutIngredientes = setTimeout(function() {
+            buscarIngredientes(termino);
+        }, 300);
     }
 
     function limpiarFormularioIngrediente() {
         console.log("Limpiando formulario de ingrediente");
-        $("#frmIngredientes")[0].reset()
-        $("#hiddenIdIngrediente").remove()
+        $("#frmIngredientes")[0].reset();
+        $("#hiddenIdIngrediente").remove();
     }
 
-    buscarIngredientes()
+    // Cargar ingredientes inicialmente
+    buscarIngredientes();
     
-    // Mantener logging de Pusher para desarrollo/práctica
+    // Configuración de Pusher para ingredientes
     Pusher.logToConsole = true;
-
-    // Verificación para evitar Pusher duplicado para ingredientes
     if (typeof window.pusherIngredientes === 'undefined') {
         console.log("Inicializando Pusher para ingredientes");
         window.pusherIngredientes = new Pusher("48294aad3f28c3669613", {
@@ -341,108 +408,176 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
         var channel = window.pusherIngredientes.subscribe("canalIngredientes");
         channel.bind("eventoDeIngredientes", function(data) {
             console.log("Evento Pusher ingredientes recibido:", data);
-            buscarIngredientes();
+            // Mantener el término de búsqueda actual al actualizar
+            const terminoBusqueda = $("#txtBuscarIngrediente").val() || "";
+            buscarIngredientes(terminoBusqueda);
         });
-    } else {
-        console.log("Pusher para ingredientes ya está inicializado");
     }
+
+    // Event listener para búsqueda en tiempo real
+    $(document).off("input", "#txtBuscarIngrediente").on("input", "#txtBuscarIngrediente", function() {
+        const termino = $(this).val();
+        console.log("Término de búsqueda de ingrediente:", termino);
+        buscarIngredientesDebounced(termino);
+    });
+    
+    // Event listener para limpiar búsqueda
+    $(document).off("click", "#btnLimpiarIngrediente").on("click", "#btnLimpiarIngrediente", function() {
+        console.log("Limpiando búsqueda de ingredientes");
+        $("#txtBuscarIngrediente").val("");
+        buscarIngredientes("");
+    });
 
     // Guardar/actualizar ingrediente
     $(document).off("submit", "#frmIngredientes").on("submit", "#frmIngredientes", function (event) {
-        event.preventDefault()
+        event.preventDefault();
         console.log("Formulario de ingrediente enviado");
 
-        // Deshabilitar botón durante el envío
         const $submitBtn = $(this).find('button[type="submit"]');
         $submitBtn.prop('disabled', true);
-        console.log("Botón de envío deshabilitado");
 
         $.post("/ingrediente", {
             idIngrediente: $("#hiddenIdIngrediente").val() || "",
             nombreIngrediente: $("#txtNombre").val(),
             existencias: $("#txtExistencias").val()
         }, function(response) {
-            console.log("Ingrediente guardado exitosamente:", response)
-            limpiarFormularioIngrediente()
-            buscarIngredientes()
-            toast("Ingrediente guardado correctamente", 3, function() {
-                console.log("Toast completado")
-            })
+            console.log("Ingrediente guardado exitosamente:", response);
+            limpiarFormularioIngrediente();
+            // Mantener búsqueda activa después de guardar
+            const terminoBusqueda = $("#txtBuscarIngrediente").val() || "";
+            buscarIngredientes(terminoBusqueda);
+            toast("Ingrediente guardado correctamente", 3);
         }).fail(function(xhr, status, error) {
-            console.error("Error al guardar ingrediente:", error)
-            console.error("Status:", status)
-            console.error("Response:", xhr.responseText)
-            alert("Error al guardar el ingrediente")
+            console.error("Error al guardar ingrediente:", error);
+            alert("Error al guardar el ingrediente");
         }).always(function() {
-            console.log("Rehabilitando botón de envío");
             $submitBtn.prop('disabled', false);
-        })
-    })
+        });
+    });
 
     // Editar ingrediente
     $(document).off("click", ".btn-editar-ingrediente").on("click", ".btn-editar-ingrediente", function (event) {
-        const id = $(this).data("id")
+        const id = $(this).data("id");
         console.log("Editando ingrediente con ID:", id);
         
         $.get(`/ingrediente/${id}`, function (data) {
             console.log("Datos del ingrediente recibidos:", data);
             if (data.length > 0) {
-                const ingrediente = data[0]
-                $("#txtNombre").val(ingrediente.nombreIngrediente)
-                $("#txtExistencias").val(ingrediente.existencias)
+                const ingrediente = data[0];
+                $("#txtNombre").val(ingrediente.nombreIngrediente);
+                $("#txtExistencias").val(ingrediente.existencias);
                 
                 if ($("#hiddenIdIngrediente").length === 0) {
-                    $("#frmIngredientes").prepend('<input type="hidden" id="hiddenIdIngrediente" name="idIngrediente">')
+                    $("#frmIngredientes").prepend('<input type="hidden" id="hiddenIdIngrediente" name="idIngrediente">');
                 }
-                $("#hiddenIdIngrediente").val(ingrediente.idIngrediente)
+                $("#hiddenIdIngrediente").val(ingrediente.idIngrediente);
                 console.log("Formulario llenado para edición");
                 
                 $('html, body').animate({
                     scrollTop: $("#frmIngredientes").offset().top
-                }, 500)
+                }, 500);
             }
         }).fail(function(xhr, status, error) {
-            console.error("Error al cargar ingrediente:", error)
-            console.error("Status:", status)
-            console.error("Response:", xhr.responseText)
-            alert("Error al cargar los datos del ingrediente")
-        })
-    })
+            console.error("Error al cargar ingrediente:", error);
+            alert("Error al cargar los datos del ingrediente");
+        });
+    });
 
     // Eliminar ingrediente
     $(document).off("click", ".btn-eliminar-ingrediente").on("click", ".btn-eliminar-ingrediente", function (event) {
-        const id = $(this).data("id")
+        const id = $(this).data("id");
         const $btn = $(this);
         console.log("Intentando eliminar ingrediente con ID:", id);
         
         if (confirm("¿Está seguro de eliminar este ingrediente?")) {
             $btn.prop('disabled', true);
-            console.log("Botón de eliminar deshabilitado");
             
             $.post("/ingrediente/eliminar", {
                 id: id
             }, function(response) {
-                console.log("Ingrediente eliminado exitosamente:", response)
-                buscarIngredientes()
-                toast("Ingrediente eliminado correctamente", 3)
+                console.log("Ingrediente eliminado exitosamente:", response);
+                // Mantener búsqueda activa después de eliminar
+                const terminoBusqueda = $("#txtBuscarIngrediente").val() || "";
+                buscarIngredientes(terminoBusqueda);
+                toast("Ingrediente eliminado correctamente", 3);
             }).fail(function(xhr, status, error) {
-                console.error("Error al eliminar ingrediente:", error)
-                console.error("Status:", status)
-                console.error("Response:", xhr.responseText)
-                alert("Error al eliminar el ingrediente")
+                console.error("Error al eliminar ingrediente:", error);
+                alert("Error al eliminar el ingrediente");
             }).always(function() {
-                console.log("Rehabilitando botón de eliminar");
                 $btn.prop('disabled', false);
             });
         }
-    })
+    });
 
     // Cancelar edición
     $(document).off("click", "#btnCancelarIngrediente").on("click", "#btnCancelarIngrediente", function (event) {
         console.log("Cancelando edición de ingrediente");
-        limpiarFormularioIngrediente()
-    })
-})
+        limpiarFormularioIngrediente();
+    });
+});
+
+// ======================================
+// FUNCIONES ADICIONALES Y MEJORAS
+// ======================================
+
+// Función para mostrar atajos de teclado (opcional)
+$(document).ready(function() {
+    console.log("Inicializando funciones de búsqueda mejoradas");
+    
+    // Atajos de teclado para búsqueda
+    $(document).on("keydown", function(e) {
+        // Ctrl + F para enfocar búsqueda de postres si estamos en esa página
+        if (e.ctrlKey && e.key === 'f' && $("#txtBuscarPostre").length) {
+            e.preventDefault();
+            $("#txtBuscarPostre").focus();
+        }
+        
+        // Ctrl + Shift + F para enfocar búsqueda de ingredientes si estamos en esa página
+        if (e.ctrlKey && e.shiftKey && e.key === 'F' && $("#txtBuscarIngrediente").length) {
+            e.preventDefault();
+            $("#txtBuscarIngrediente").focus();
+        }
+        
+        // ESC para limpiar búsqueda activa
+        if (e.key === 'Escape') {
+            if ($("#txtBuscarPostre").is(":focus")) {
+                $("#btnLimpiarPostre").click();
+                $("#txtBuscarPostre").blur();
+            }
+            if ($("#txtBuscarIngrediente").is(":focus")) {
+                $("#btnLimpiarIngrediente").click();
+                $("#txtBuscarIngrediente").blur();
+            }
+        }
+    });
+    
+    // Placeholder dinámico con consejos
+    let contadorTips = 0;
+    const tipsPostres = [
+        "Buscar postres por nombre o precio...",
+        "Ejemplo: 'chocolate' o '15.50'",
+        "Prueba buscar por palabras parciales",
+        "💡 Usa Ctrl+F para búsqueda rápida"
+    ];
+    
+    const tipsIngredientes = [
+        "Buscar ingredientes por nombre o cantidad...",
+        "Ejemplo: 'harina' o '100'",
+        "Encuentra ingredientes con poca existencia",
+        "💡 Usa Ctrl+Shift+F para búsqueda rápida"
+    ];
+    
+    // Cambiar tips cada 3 segundos
+    setInterval(function() {
+        if ($("#txtBuscarPostre").length && !$("#txtBuscarPostre").is(":focus")) {
+            $("#txtBuscarPostre").attr("placeholder", tipsPostres[contadorTips % tipsPostres.length]);
+        }
+        if ($("#txtBuscarIngrediente").length && !$("#txtBuscarIngrediente").is(":focus")) {
+            $("#txtBuscarIngrediente").attr("placeholder", tipsIngredientes[contadorTips % tipsIngredientes.length]);
+        }
+        contadorTips++;
+    }, 3000);
+});
 
 // ======================================
 // CONFIGURACIÓN DE FECHA Y HORA
@@ -513,4 +648,5 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
+
 
