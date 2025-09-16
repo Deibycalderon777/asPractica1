@@ -19,7 +19,7 @@ class UsuarioRepository:
             with self.db_config.get_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 query = """
-                SELECT Id, Nombre_Usuario, Correo_Electronico, Contraseña 
+                SELECT Id, Nombre_Usuario, Correo_Electronico, Contrasena 
                 FROM usuarios 
                 WHERE Nombre_Usuario = %s OR Correo_Electronico = %s
                 """
