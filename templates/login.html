@@ -6,8 +6,8 @@
                 <p>Sistema de Gestión de Postres</p>
             </div>
 
-            <!-- Alertas (seguro si no hay alert, no rompe) -->
-            <div ng-show="vm.alert && vm.alert.show" class="alert" ng-class="'alert-' + vm.alert.type">
+            <!-- Alertas -->
+            <div ng-show="vm.alert.show" class="alert" ng-class="'alert-' + vm.alert.type">
                 <i class="fas" ng-class="vm.alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'"></i>
                 {{ vm.alert.message }}
             </div>
@@ -76,34 +76,49 @@
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Controlador AngularJS seguro -->
+    <!-- Controlador AngularJS para login real -->
     <script>
         angular.module('postresApp', [])
-        .controller('loginCtrl', ['$scope', '$timeout', function($scope, $timeout) {
+        .controller('loginCtrl', ['$http', '$timeout', function($http, $timeout) {
             var vm = this;
 
-            // Variables iniciales
             vm.credentials = {};
             vm.alert = { show: false, type: 'success', message: '' };
             vm.isLoading = false;
 
-            // Función de login simulada
             vm.login = function() {
+                if (!vm.credentials.loginField || !vm.credentials.password) return;
+
                 vm.isLoading = true;
                 vm.alert.show = false;
 
-                // Simula un login con retraso
-                $timeout(function() {
+                // POST al endpoint de Flask
+                $http.post('/login', vm.credentials)
+                .then(function(response) {
                     vm.isLoading = false;
-                    vm.alert = { show: true, type: 'success', message: 'Login simulado correctamente' };
-                }, 1000);
+
+                    // Suponemos que Flask devuelve {status: 'ok'} o {status: 'error', message: '...'}
+                    if (response.data.status === 'ok') {
+                        vm.alert = { show: true, type: 'success', message: 'Login correcto, redirigiendo...' };
+                        
+                        // Redirigir al dashboard o postres
+                        $timeout(function() {
+                            window.location.href = '/postres';
+                        }, 1000);
+                    } else {
+                        vm.alert = { show: true, type: 'danger', message: response.data.message || 'Credenciales incorrectas' };
+                    }
+                })
+                .catch(function(error) {
+                    vm.isLoading = false;
+                    vm.alert = { show: true, type: 'danger', message: 'Error de conexión al servidor' };
+                    console.error(error);
+                });
             };
 
-            // Función de "Olvidé mi contraseña" simulada
             vm.showForgotPasswordModal = function() {
-                alert('Función simulada: recuperación de contraseña');
+                alert('Función de recuperación de contraseña no implementada aún.');
             };
         }]);
     </script>
 </body>
-
