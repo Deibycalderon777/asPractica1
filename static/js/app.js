@@ -1,5 +1,5 @@
 // ========================================
-// MÓDULO PRINCIPAL DE LA APP
+// MÓDULO PRINCIPAL
 // ========================================
 const app = angular.module("angularjsApp", ["ngRoute"]);
 
@@ -8,7 +8,7 @@ app.config(function ($routeProvider, $locationProvider) {
 
     $routeProvider
     .when("/", {
-        redirectTo: "/login"
+        redirectTo: "/postres" // ✅ directo al dashboard
     })
     .when("/login", {
         templateUrl: "/templates/login",
@@ -24,7 +24,7 @@ app.config(function ($routeProvider, $locationProvider) {
         controller: "ingredientesCtrl",
         requireAuth: true
     })
-    .otherwise({ redirectTo: "/login" }); // ✅ cierre correcto
+    .otherwise({ redirectTo: "/login" });
 });
 
 // ========================================
@@ -34,10 +34,8 @@ app.run(["$rootScope", "$location", "$timeout", "$http", "AuthService",
 function ($rootScope, $location, $timeout, $http, AuthService) {
     $http.defaults.withCredentials = true;
 
-    // Inicializar Luxon
     const { DateTime } = luxon;
 
-    // Actualizar fecha y hora en el scope
     function actualizarFechaHora() {
         const lxFechaHora = DateTime.now().setLocale("es");
         $rootScope.angularjsHora = lxFechaHora.toFormat("hh:mm:ss a");
@@ -46,7 +44,6 @@ function ($rootScope, $location, $timeout, $http, AuthService) {
 
     actualizarFechaHora();
 
-    // Middleware de rutas
     $rootScope.$on("$routeChangeStart", function (event, next) {
         if (next && next.requireAuth && !AuthService.isAuthenticated()) {
             event.preventDefault();
@@ -54,19 +51,6 @@ function ($rootScope, $location, $timeout, $http, AuthService) {
         }
     });
 }]);
-
-// ========================================
-// CONTROLADOR PRINCIPAL DE LA APP
-// ========================================
-app.controller("appCtrl", function ($scope, $http, AuthService) {
-    $scope.isAuthenticated = AuthService.isAuthenticated();
-
-    $scope.logout = function () {
-        $http.post("/logout").then(() => {
-            AuthService.logout();
-        });
-    };
-});
 
 // ========================================
 // SERVICIO DE AUTENTICACIÓN
@@ -78,7 +62,7 @@ app.service("AuthService", function ($rootScope, $http, $location) {
         return $http.post("/login", credentials).then(function () {
             authenticated = true;
             $rootScope.isAuthenticated = true;
-            $location.path("/postres");
+            $location.path("/postres"); // ✅ dashboard
         });
     };
 
@@ -108,7 +92,7 @@ app.controller("loginCtrl", function ($scope, AuthService) {
 });
 
 // ========================================
-// CONTROLADOR DE POSTRES
+// CONTROLADOR DE POSTRES (DASHBOARD)
 // ========================================
 app.controller("postresCtrl", function ($scope) {
     const pusher = new Pusher("47f6e45eec64327334f7", { cluster: "us2" });
@@ -142,7 +126,10 @@ app.controller("postresCtrl", function ($scope) {
     };
 
     $scope.updatePostre = function (postre) {
-        $.post("/postres/update", { idPostre: postre.idPostre, nombrePostre: postre.nombrePostre }, function () {
+        $.post("/postres/update", {
+            idPostre: postre.idPostre,
+            nombrePostre: postre.nombrePostre
+        }, function () {
             postre.editing = false;
             loadPostres();
         });
@@ -238,7 +225,7 @@ app.controller("ingredientesCtrl", function ($scope, $timeout) {
 // ========================================
 $(document).ready(function () {
     const sessionTimeout = 7 * 24 * 60 * 60 * 1000; // 7 días
-    const warningTimeout = sessionTimeout - 5 * 60 * 1000; // 5 minutos antes
+    const warningTimeout = sessionTimeout - 5 * 60 * 1000;
 
     function refreshSession() {
         $.post("/refresh-session", function (response) {
@@ -255,9 +242,8 @@ $(document).ready(function () {
     }
 
     setTimeout(refreshSession, warningTimeout);
-    setInterval(checkAuthStatus, 5 * 60 * 1000); // cada 5 minutos
+    setInterval(checkAuthStatus, 5 * 60 * 1000);
 
-    // Interceptor global para AJAX
     $(document).ajaxError(function (event, jqxhr) {
         if (jqxhr.status === 401) {
             alert("Tu sesión ha expirado. Serás redirigido al login.");
@@ -265,7 +251,7 @@ $(document).ready(function () {
         }
     });
 
-    // UX Mejorada: accesos rápidos
+    // UX accesos rápidos
     $(document).on("keydown", function (e) {
         if (e.ctrlKey && e.key === "f") {
             e.preventDefault();
@@ -297,4 +283,3 @@ $(document).ready(function () {
         tipIndex = (tipIndex + 1) % tips.length;
     }, 4000);
 });
-
