@@ -8,8 +8,7 @@ app.config(function ($routeProvider, $locationProvider) {
 
     $routeProvider
     .when("/", {
-        templateUrl: "/templates/app",
-        controller: "appCtrl"
+        redirectTo: "/login"
     })
     .when("/login", {
         templateUrl: "/templates/login",
@@ -298,3 +297,4 @@ $(document).ready(function () {
         tipIndex = (tipIndex + 1) % tips.length;
     }, 4000);
 });
+
