@@ -19,29 +19,26 @@ const app = angular.module("angularjsApp", ["ngRoute"])
 app.config(function ($routeProvider, $locationProvider) {
     $locationProvider.hashPrefix("")
 
-    $routeProvider
-    .when("/", {
-        templateUrl: "/app",
-        controller: "appCtrl"
-    })
-    .when("/login", {
-        templateUrl: "/login",
-        controller: "loginCtrl"
-    })
-    .when("/postres", {
-        templateUrl: "/postres",
-        controller: "postresCtrl",
-        requireAuth: true  // Ruta protegida
-    })
-    .when("/ingredientes", {
-        templateUrl: "/ingredientes",
-        controller: "ingredientesCtrl",
-        requireAuth: true  // Ruta protegida
-    })
-    .otherwise({
-        redirectTo: "/login"  // Redirigir a login por defecto
-    })
-})
+  $routeProvider
+  .when("/", {
+    templateUrl: "/templates/app",
+    controller: "appCtrl"
+  })
+  .when("/login", {
+    templateUrl: "/templates/login",
+    controller: "loginCtrl"
+  })
+  .when("/postres", {
+    templateUrl: "/templates/postres",
+    controller: "postresCtrl",
+    requireAuth: true
+  })
+  .when("/ingredientes", {
+    templateUrl: "/templates/ingredientes",
+    controller: "ingredientesCtrl",
+    requireAuth: true
+  })
+
 
 // ========================================
 // SERVICIO DE AUTENTICACIÓN
@@ -1213,3 +1210,4 @@ $(document).on('click keypress scroll', function() {
 
 
 console.log("Sistema de login con arquitectura por capas inicializado correctamente");
+
