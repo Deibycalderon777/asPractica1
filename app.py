@@ -1,10 +1,10 @@
 # ========================================
-# app.py - ARCHIVO PRINCIPAL CORREGIDO
+# app.py - ARCHIVO PRINCIPAL CORREGIDO Y OPTIMIZADO
 # ========================================
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
 from flask_cors import CORS
-from datetime import timedelta
+from datetime import timedelta, datetime
 import logging
 import os
 
@@ -18,7 +18,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
 logger = logging.getLogger(__name__)
 
 # Crear aplicación Flask
@@ -31,7 +30,7 @@ app = Flask(__name__)
 # Configuración de sesiones y seguridad
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_super_secreta_aqui_cambiar_en_produccion')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-app.config['SESSION_COOKIE_SECURE'] = False  # True en producción con HTTPS
+app.config['SESSION_COOKIE_SECURE'] = False  # Cambiar a True en producción con HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
@@ -50,19 +49,13 @@ app.register_blueprint(postre_bp)
 app.register_blueprint(ingrediente_bp)
 
 # ========================================
-# RUTAS PRINCIPALES
+# RUTAS PRINCIPALES Y TEMPLATES
 # ========================================
 
 @app.route("/")
 def index():
-    """Página principal - redirige a la app de AngularJS"""
+    """Página principal - carga AngularJS app"""
     return render_template("index.html")
-
-
-
-# ========================================
-# RUTAS PARA TEMPLATES DE ANGULARJS
-# ========================================
 
 @app.route("/postres")
 def postres_view():
@@ -86,7 +79,7 @@ def login_view():
 @app.errorhandler(404)
 def not_found_error(error):
     """Manejo de errores 404"""
-    logger.warning(f"Página no encontrada: {error}")
+    logger.warning(f"Página no encontrada: {request.url}")
     return render_template("errors/404.html"), 404
 
 @app.errorhandler(500)
@@ -98,8 +91,8 @@ def internal_error(error):
 @app.errorhandler(401)
 def unauthorized_error(error):
     """Manejo de errores 401 - No autorizado"""
-    logger.warning(f"Acceso no autorizado: {error}")
-    return render_template("login.html"), 401
+    logger.warning(f"Acceso no autorizado: {request.url}")
+    return redirect(url_for('login_view'))
 
 # ========================================
 # MIDDLEWARE PERSONALIZADO
@@ -109,7 +102,7 @@ def unauthorized_error(error):
 def log_request_info():
     """Log de información de requests (opcional para debugging)"""
     if app.debug:
-        logger.debug(f"Request: {request.method} {request.url}")
+        logger.debug(f"Request: {request.method} {request.url} - Headers: {dict(request.headers)}")
 
 @app.after_request
 def after_request(response):
@@ -120,7 +113,7 @@ def after_request(response):
     return response
 
 # ========================================
-# RUTAS DE SALUD Y ESTADO (OPCIONAL)
+# RUTAS DE SALUD Y ESTADO
 # ========================================
 
 @app.route("/health")
@@ -134,10 +127,9 @@ def health_check():
 
 @app.route("/api/status")
 def api_status():
-    """Estado de la API"""
+    """Estado de la API y conexión a base de datos"""
     from config.database import DatabaseConfig
     
-    # Verificar conexión a base de datos
     db_status = "ok"
     try:
         db_config = DatabaseConfig()
@@ -170,50 +162,9 @@ if __name__ == "__main__":
 else:
     # Configuración para producción
     logger.info("Aplicación iniciada en modo producción")
-    # En producción, usa un servidor WSGI como Gunicorn
+    # En producción, usar un servidor WSGI como Gunicorn:
     # gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 # ========================================
-# COMENTARIOS Y NOTAS
+# FIN DEL ARCHIVO
 # ========================================
-
-"""
-ESTRUCTURA FINAL DE TU APLICACIÓN:
-
-1. CONFIGURACIÓN:
-   - Variables de entorno para secretos
-   - Configuración de sesiones seguras
-   - CORS habilitado con credenciales
-
-2. BLUEPRINTS REGISTRADOS:
-   - auth_bp: /api/login, /api/logout, etc.
-   - postre_bp: /api/postres, /postre, etc.
-   - ingrediente_bp: /api/ingredientes, /ingrediente, etc.
-
-3. RUTAS DE TEMPLATES:
-   - / → index.html (página principal)
-   - /app → app.html (dashboard)
-   - /postres → postres.html (gestión de postres)
-   - /ingredientes → ingredientes.html (gestión de ingredientes)
-   - /login → login.html (página de login)
-
-4. MANEJO DE ERRORES:
-   - 404, 500, 401 con templates personalizados
-
-5. SEGURIDAD:
-   - Headers de seguridad
-   - Configuración de cookies seguras
-   - Logging de actividades
-
-PRÓXIMOS PASOS:
-1. Crear los templates faltantes en templates/
-2. Verificar que todos los blueprints existan
-3. Probar las rutas una por una
-4. Implementar templates de error (opcional)
-
-PARA PRODUCCIÓN:
-- Cambiar SECRET_KEY por variable de entorno
-- Habilitar SESSION_COOKIE_SECURE = True con HTTPS
-- Usar servidor WSGI como Gunicorn
-- Configurar logging a archivos
-"""
