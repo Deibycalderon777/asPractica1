@@ -140,6 +140,7 @@ app.service('AuthService', function($http, $q) {
 // CONFIGURACIÓN DE EJECUCIÓN CON MIDDLEWARE DE AUTH
 // ========================================
 app.run(["$rootScope", "$location", "$timeout", "AuthService", function($rootScope, $location, $timeout, AuthService) {
+     $http.defaults.withCredentials = true;
     function actualizarFechaHora() {
         lxFechaHora = DateTime
         .now()
@@ -1209,5 +1210,6 @@ $(document).on('click keypress scroll', function() {
         resetSessionWarning();
     }
 });
+
 
 console.log("Sistema de login con arquitectura por capas inicializado correctamente");
