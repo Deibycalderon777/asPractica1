@@ -10,20 +10,21 @@ app.config(function ($routeProvider, $locationProvider) {
     .when("/", {
         redirectTo: "/postres" // ✅ directo al dashboard
     })
-    .when("/login", {
-        templateUrl: "/templates/login",
-        controller: "loginCtrl"
-    })
-    .when("/postres", {
-        templateUrl: "/templates/postres",
-        controller: "postresCtrl",
-        requireAuth: true
-    })
-    .when("/ingredientes", {
-        templateUrl: "/templates/ingredientes",
-        controller: "ingredientesCtrl",
-        requireAuth: true
-    })
+.when("/login", {
+    templateUrl: "templates/login.html",
+    controller: "loginCtrl"
+})
+.when("/postres", {
+    templateUrl: "templates/postres.html",
+    controller: "postresCtrl",
+    requireAuth: true
+})
+.when("/ingredientes", {
+    templateUrl: "templates/ingredientes.html",
+    controller: "ingredientesCtrl",
+    requireAuth: true
+})
+
     .otherwise({ redirectTo: "/login" });
 });
 
@@ -283,3 +284,4 @@ $(document).ready(function () {
         tipIndex = (tipIndex + 1) % tips.length;
     }, 4000);
 });
+
