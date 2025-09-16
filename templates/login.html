@@ -1,19 +1,13 @@
-<body ng-controller="loginCtrl">
+<body>
     <div class="login-container">
         <div class="login-card">
-            <div class="login-header">
+            <div class="login-header text-center mb-4">
                 <h1><i class="fas fa-lock"></i> Iniciar Sesión</h1>
                 <p>Sistema de Gestión de Postres</p>
             </div>
-            
-            <!-- Alertas -->
-            <div ng-show="alert.show" class="alert" ng-class="'alert-' + alert.type">
-                <i class="fas" ng-class="alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'"></i>
-                {{ alert.message }}
-            </div>
-            
-            <!-- Formulario -->
-            <form ng-submit="login()" name="loginForm">
+
+            <!-- Formulario básico -->
+            <form action="/login" method="POST">
                 <div class="mb-3">
                     <label for="loginField" class="form-label">
                         <i class="fas fa-user"></i> Usuario o Email:
@@ -21,12 +15,12 @@
                     <input 
                         type="text" 
                         id="loginField" 
+                        name="loginField"
                         class="form-control" 
-                        ng-model="credentials.loginField" 
                         required
                         placeholder="Ingresa tu usuario o email">
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="password" class="form-label">
                         <i class="fas fa-key"></i> Contraseña:
@@ -34,36 +28,30 @@
                     <input 
                         type="password" 
                         id="password" 
+                        name="password"
                         class="form-control" 
-                        ng-model="credentials.password" 
                         required
                         placeholder="Ingresa tu contraseña">
                 </div>
-                
+
                 <div class="mb-3 form-check">
                     <input 
                         type="checkbox" 
                         class="form-check-input" 
                         id="rememberMe" 
-                        ng-model="credentials.rememberMe">
+                        name="rememberMe">
                     <label class="form-check-label" for="rememberMe">
                         Recordarme
                     </label>
                 </div>
-                
-                <button 
-                    type="submit" 
-                    class="btn btn-primary w-100"
-                    ng-disabled="loginForm.$invalid || isLoading">
-                    <span ng-show="isLoading" class="loading"></span>
-                    <span ng-show="!isLoading">
-                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                    </span>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                 </button>
             </form>
-            
+
             <div class="text-center mt-3">
-                <a href="#" ng-click="showForgotPasswordModal()" class="text-decoration-none">
+                <a href="#" class="text-decoration-none">
                     <i class="fas fa-question-circle"></i> ¿Olvidaste tu contraseña?
                 </a>
             </div>
