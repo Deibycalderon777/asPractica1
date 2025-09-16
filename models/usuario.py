@@ -11,7 +11,7 @@ class Usuario:
     Id: int
     Nombre_Usuario: str
     Correo_Electronico: str
-    Contraseña: Optional[str] = None  # No exponer en respuestas
+    Contrasena: Optional[str] = None  # No exponer en respuestas
     ultimo_login: Optional[datetime] = None
     
     def to_dict(self, include_password=False):
@@ -21,8 +21,8 @@ class Usuario:
             'Nombre_Usuario': self.Nombre_Usuario,
             'Correo_Electronico': self.Correo_Electronico
         }
-        if include_password and self.Contraseña:
-            result['Contraseña'] = self.Contraseña
+        if include_password and self.Contrasena:
+            result['Contrasena'] = self.Contrasena
         if self.ultimo_login:
             result['ultimo_login'] = self.ultimo_login
         return result
@@ -36,6 +36,6 @@ class Usuario:
             Id=data.get('Id'),
             Nombre_Usuario=data.get('Nombre_Usuario'),
             Correo_Electronico=data.get('Correo_Electronico'),
-            Contraseña=data.get('Contraseña'),
+            Contrasena=data.get('Contrasena'),
             ultimo_login=data.get('ultimo_login')
         )
