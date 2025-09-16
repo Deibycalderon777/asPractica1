@@ -1,59 +1,197 @@
-<div class="card-body">
-  <!-- Mensaje de estado (éxito o error) -->
-  <div ng-if="mensaje" class="alert" ng-class="{'alert-success': mensaje.includes('Bienvenido') || mensaje.includes('exitoso'), 'alert-danger': !mensaje.includes('Bienvenido') && !mensaje.includes('exitoso')}" role="alert">
-    {{mensaje}}
-  </div>
-  
-  <!-- Indicador de carga -->
-  <div ng-if="cargando" class="text-center mb-3">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Cargando...</span>
-    </div>
-    <p class="mt-2">Verificando credenciales...</p>
-  </div>
-  
-  <!-- Formulario de login -->
-  <form ng-submit="login()" ng-hide="cargando">
-    <div class="mb-3">
-      <label for="usuario" class="form-label">Usuario o Email</label>
-      <input 
-        type="text" 
-        class="form-control" 
-        id="usuario" 
-        ng-model="usuario" 
-        placeholder="Ingresa tu usuario o email"
-        required
-        ng-disabled="cargando">
-    </div>
+# ========================================
+# 6. TEMPLATE DE LOGIN - templates/login.html
+# ========================================
+
+login_template = """
+<!DOCTYPE html>
+<html lang="es" ng-app="angularjsApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Postres</title>
     
-    <div class="mb-3">
-      <label for="contrasena" class="form-label">Contraseña</label>
-      <input 
-        type="password" 
-        class="form-control" 
-        id="contrasena" 
-        ng-model="contrasena" 
-        placeholder="Ingresa tu contraseña"
-        required
-        ng-disabled="cargando">
-    </div>
+    <!-- AngularJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular-route.min.js"></script>
     
-    <button 
-      type="submit" 
-      class="btn btn-primary w-100"
-      ng-disabled="cargando || !usuario || !contrasena">
-      <span ng-if="cargando">
-        <span class="spinner-border spinner-border-sm" role="status"></span>
-        Verificando...
-      </span>
-      <span ng-if="!cargando">Entrar</span>
-    </button>
-  </form>
-  
-  <!-- Información adicional (opcional) -->
-  <div class="text-center mt-3">
-    <small class="text-muted">
-      Ingresa con tu usuario o email y contraseña
-    </small>
-  </div>
-</div>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    
+    <!-- Tu app.js -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+        
+        .login-header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e1e1e1;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .alert {
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 1rem;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body ng-controller="loginCtrl">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1><i class="fas fa-lock"></i> Iniciar Sesión</h1>
+                <p>Sistema de Gestión de Postres</p>
+            </div>
+            
+            <!-- Alertas -->
+            <div ng-show="alert.show" class="alert" ng-class="'alert-' + alert.type">
+                <i class="fas" ng-class="alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'"></i>
+                {{ alert.message }}
+            </div>
+            
+            <!-- Formulario -->
+            <form ng-submit="login()" name="loginForm">
+                <div class="mb-3">
+                    <label for="loginField" class="form-label">
+                        <i class="fas fa-user"></i> Usuario o Email:
+                    </label>
+                    <input 
+                        type="text" 
+                        id="loginField" 
+                        class="form-control" 
+                        ng-model="credentials.loginField" 
+                        required
+                        placeholder="Ingresa tu usuario o email">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="password" class="form-label">
+                        <i class="fas fa-key"></i> Contraseña:
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-control" 
+                        ng-model="credentials.password" 
+                        required
+                        placeholder="Ingresa tu contraseña">
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input 
+                        type="checkbox" 
+                        class="form-check-input" 
+                        id="rememberMe" 
+                        ng-model="credentials.rememberMe">
+                    <label class="form-check-label" for="rememberMe">
+                        Recordarme
+                    </label>
+                </div>
+                
+                <button 
+                    type="submit" 
+                    class="btn btn-primary w-100"
+                    ng-disabled="loginForm.$invalid || isLoading">
+                    <span ng-show="isLoading" class="loading"></span>
+                    <span ng-show="!isLoading">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                    </span>
+                </button>
+            </form>
+            
+            <div class="text-center mt-3">
+                <a href="#" ng-click="showForgotPasswordModal()" class="text-decoration-none">
+                    <i class="fas fa-question-circle"></i> ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

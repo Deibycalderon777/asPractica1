@@ -1,3 +1,6 @@
+// ========================================
+// FUNCIONES GLOBALES EXISTENTES
+// ========================================
 function activeMenuOption(href) {
     $(".app-menu .nav-link")
     .removeClass("active")
@@ -8,7 +11,11 @@ function activeMenuOption(href) {
     .attr("aria-current", "page")
 }
 
+// ========================================
+// CONFIGURACIÓN PRINCIPAL DE LA APP CON LOGIN
+// ========================================
 const app = angular.module("angularjsApp", ["ngRoute"])
+
 app.config(function ($routeProvider, $locationProvider) {
     $locationProvider.hashPrefix("")
 
@@ -17,20 +24,122 @@ app.config(function ($routeProvider, $locationProvider) {
         templateUrl: "/app",
         controller: "appCtrl"
     })
+    .when("/login", {
+        templateUrl: "/login",
+        controller: "loginCtrl"
+    })
     .when("/postres", {
         templateUrl: "/postres",
-        controller: "postresCtrl"
+        controller: "postresCtrl",
+        requireAuth: true  // Ruta protegida
     })
     .when("/ingredientes", {
         templateUrl: "/ingredientes",
-        controller: "ingredientesCtrl"
+        controller: "ingredientesCtrl",
+        requireAuth: true  // Ruta protegida
     })
     .otherwise({
-        redirectTo: "/"
+        redirectTo: "/login"  // Redirigir a login por defecto
     })
 })
 
-app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, $timeout) {
+// ========================================
+// SERVICIO DE AUTENTICACIÓN
+// ========================================
+app.service('AuthService', function($http, $q) {
+    let currentUser = null;
+    let isAuthenticated = false;
+    
+    return {
+        login: function(credentials) {
+            console.log("AuthService: Intentando login");
+            return $http.post('/api/login', credentials)
+                .then(function(response) {
+                    if (response.data.success) {
+                        currentUser = response.data.user;
+                        isAuthenticated = true;
+                        console.log("AuthService: Login exitoso", currentUser);
+                        
+                        // Guardar en localStorage si "recordarme" está marcado
+                        if (credentials.rememberMe) {
+                            localStorage.setItem('rememberedUser', JSON.stringify({
+                                loginField: credentials.loginField
+                            }));
+                        }
+                    }
+                    return response.data;
+                })
+                .catch(function(error) {
+                    console.error("AuthService: Error en login", error);
+                    isAuthenticated = false;
+                    currentUser = null;
+                    throw error;
+                });
+        },
+        
+        logout: function() {
+            console.log("AuthService: Cerrando sesión");
+            return $http.post('/api/logout')
+                .then(function(response) {
+                    currentUser = null;
+                    isAuthenticated = false;
+                    localStorage.removeItem('rememberedUser');
+                    console.log("AuthService: Logout exitoso");
+                    return response.data;
+                })
+                .catch(function(error) {
+                    console.error("AuthService: Error en logout", error);
+                    // Limpiar datos locales aunque falle el servidor
+                    currentUser = null;
+                    isAuthenticated = false;
+                    localStorage.removeItem('rememberedUser');
+                    throw error;
+                });
+        },
+        
+        checkSession: function() {
+            console.log("AuthService: Verificando sesión");
+            return $http.get('/api/profile')
+                .then(function(response) {
+                    if (response.data.success) {
+                        currentUser = response.data.user;
+                        isAuthenticated = true;
+                        console.log("AuthService: Sesión válida", currentUser);
+                        return response.data;
+                    }
+                })
+                .catch(function(error) {
+                    console.log("AuthService: No hay sesión activa");
+                    currentUser = null;
+                    isAuthenticated = false;
+                    return null;
+                });
+        },
+        
+        forgotPassword: function(email) {
+            console.log("AuthService: Recuperando contraseña para", email);
+            return $http.post('/api/forgot-password', { email: email });
+        },
+        
+        isAuthenticated: function() {
+            return isAuthenticated;
+        },
+        
+        getCurrentUser: function() {
+            return currentUser;
+        },
+        
+        getRememberedUser: function() {
+            const remembered = localStorage.getItem('rememberedUser');
+            return remembered ? JSON.parse(remembered) : null;
+        }
+    };
+});
+
+// ========================================
+// CONFIGURACIÓN DE EJECUCIÓN CON MIDDLEWARE DE AUTH
+// ========================================
+app.run(["$rootScope", "$location", "$timeout", "AuthService", function($rootScope, $location, $timeout, AuthService) {
     function actualizarFechaHora() {
         lxFechaHora = DateTime
         .now()
@@ -41,8 +150,48 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
     }
 
     $rootScope.slide = ""
+    $rootScope.currentUser = null;
+    $rootScope.isAuthenticated = false;
 
     actualizarFechaHora()
+
+    // Verificar sesión al iniciar la aplicación
+    AuthService.checkSession().then(function(sessionData) {
+        if (sessionData && sessionData.success) {
+            $rootScope.currentUser = sessionData.user;
+            $rootScope.isAuthenticated = true;
+            console.log("Sesión restaurada:", $rootScope.currentUser);
+            
+            // Si estamos en login y ya hay sesión, ir al dashboard
+            if ($location.path() === '/login' || $location.path() === '/') {
+                $location.path('/postres');
+            }
+        } else {
+            // No hay sesión, ir al login
+            if ($location.path() !== '/login') {
+                $location.path('/login');
+            }
+        }
+    });
+
+    // Middleware de autenticación en cambio de ruta
+    $rootScope.$on("$routeChangeStart", function (event, next, current) {
+        console.log("Cambiando ruta a:", next.originalPath);
+        
+        // Si la ruta requiere autenticación y no estamos autenticados
+        if (next.requireAuth && !AuthService.isAuthenticated()) {
+            console.log("Ruta protegida, redirigiendo a login");
+            event.preventDefault();
+            $location.path('/login');
+        }
+        
+        // Si estamos autenticados y tratamos de ir al login, redirigir al dashboard
+        if (next.originalPath === '/login' && AuthService.isAuthenticated()) {
+            console.log("Ya autenticado, redirigiendo a dashboard");
+            event.preventDefault();
+            $location.path('/postres');
+        }
+    });
 
     $rootScope.$on("$routeChangeSuccess", function (event, current, previous) {
         $("html").css("overflow-x", "hidden")
@@ -65,16 +214,217 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
 
             activeMenuOption(`#${path}`)
         }
+        
+        // Actualizar datos del usuario en rootScope
+        $rootScope.currentUser = AuthService.getCurrentUser();
+        $rootScope.isAuthenticated = AuthService.isAuthenticated();
     })
+
+    // Función global para logout
+    $rootScope.logout = function() {
+        console.log("Iniciando logout desde rootScope");
+        AuthService.logout().then(function(response) {
+            $rootScope.currentUser = null;
+            $rootScope.isAuthenticated = false;
+            $location.path('/login');
+            
+            if (typeof toast === 'function') {
+                toast("Sesión cerrada exitosamente", 3);
+            }
+        }).catch(function(error) {
+            console.error("Error en logout:", error);
+            // Aún así redirigir al login
+            $rootScope.currentUser = null;
+            $rootScope.isAuthenticated = false;
+            $location.path('/login');
+        });
+    };
 }])
 
-app.controller("appCtrl", function ($scope, $http) {
+// ========================================
+// CONTROLADOR DE LOGIN
+// ========================================
+app.controller("loginCtrl", function ($scope, $location, AuthService) {
+    console.log("Inicializando controlador de login");
+    
+    // Verificar si ya está autenticado
+    if (AuthService.isAuthenticated()) {
+        console.log("Ya autenticado, redirigiendo...");
+        $location.path('/postres');
+        return;
+    }
+    
+    // Variables del scope
+    $scope.credentials = {
+        loginField: '',
+        password: '',
+        rememberMe: false
+    };
+    
+    $scope.isLoading = false;
+    $scope.forgotPasswordEmail = '';
+    
+    $scope.alert = {
+        show: false,
+        message: '',
+        type: 'info'
+    };
+    
+    // Cargar usuario recordado
+    const rememberedUser = AuthService.getRememberedUser();
+    if (rememberedUser) {
+        $scope.credentials.loginField = rememberedUser.loginField;
+        $scope.credentials.rememberMe = true;
+        $scope.showAlert('Usuario recordado cargado', 'success');
+    }
+    
+    // Funciones
+    $scope.showAlert = function(message, type) {
+        $scope.alert = {
+            show: true,
+            message: message,
+            type: type || 'info'
+        };
+        
+        setTimeout(function() {
+            $scope.$apply(function() {
+                $scope.alert.show = false;
+            });
+        }, 5000);
+    };
+    
+    $scope.login = function() {
+        if (!$scope.credentials.loginField || !$scope.credentials.password) {
+            $scope.showAlert('Por favor, completa todos los campos', 'danger');
+            return;
+        }
+        
+        $scope.isLoading = true;
+        
+        AuthService.login($scope.credentials)
+        .then(function(response) {
+            $scope.isLoading = false;
+            
+            if (response.success) {
+                $scope.showAlert('¡Login exitoso! Redirigiendo...', 'success');
+                
+                // Actualizar rootScope
+                $scope.$root.currentUser = response.user;
+                $scope.$root.isAuthenticated = true;
+                
+                setTimeout(function() {
+                    $scope.$apply(function() {
+                        $location.path('/postres'); // Redirigir al dashboard
+                    });
+                }, 1500);
+            }
+        })
+        .catch(function(error) {
+            $scope.isLoading = false;
+            const message = error.data && error.data.message ? error.data.message : 'Error en el login';
+            $scope.showAlert(message, 'danger');
+        });
+    };
+    
+    $scope.forgotPassword = function() {
+        if (!$scope.forgotPasswordEmail) {
+            $scope.showAlert('Por favor, ingresa tu email', 'warning');
+            return;
+        }
+        
+        AuthService.forgotPassword($scope.forgotPasswordEmail)
+        .then(function(response) {
+            $scope.showAlert(response.data.message, 'success');
+            $scope.forgotPasswordEmail = '';
+            
+            // Cerrar modal si existe
+            if (typeof closeModal === 'function') {
+                setTimeout(closeModal, 100);
+            }
+        })
+        .catch(function(error) {
+            const message = error.data && error.data.message ? error.data.message : 'Error al enviar email';
+            $scope.showAlert(message, 'danger');
+        });
+    };
+    
+    $scope.showForgotPasswordModal = function() {
+        // Implementar modal o usar el existente de tu sistema
+        if (typeof modal === 'function') {
+            const modalContent = `
+                <div class="mb-3">
+                    <label for="forgotEmail" class="form-label">Email de recuperación:</label>
+                    <input type="email" id="forgotEmail" class="form-control" ng-model="forgotPasswordEmail" placeholder="Ingresa tu email">
+                </div>
+            `;
+            
+            modal(modalContent, "Recuperar Contraseña", [
+                {
+                    html: '<i class="bi bi-paper-plane"></i> Enviar', 
+                    class: "btn btn-primary", 
+                    fun: function() {
+                        const email = document.getElementById('forgotEmail').value;
+                        $scope.forgotPasswordEmail = email;
+                        $scope.forgotPassword();
+                    }
+                },
+                {
+                    html: '<i class="bi bi-x-circle"></i> Cancelar', 
+                    class: "btn btn-secondary", 
+                    fun: function(event) {
+                        setTimeout(closeModal, 10);
+                    }
+                }
+            ]);
+        }
+    };
+});
+
+// ========================================
+// CONTROLADOR PRINCIPAL (DASHBOARD)
+// ========================================
+app.controller("appCtrl", function ($scope, $http, AuthService) {
+    console.log("Inicializando controlador principal");
+    
+    // Verificar autenticación
+    if (!AuthService.isAuthenticated()) {
+        console.log("No autenticado en appCtrl");
+        return;
+    }
+    
+    $scope.user = AuthService.getCurrentUser();
+    console.log("Usuario actual en dashboard:", $scope.user);
+    
+    // Aquí puedes agregar lógica específica del dashboard
+    $scope.stats = {
+        totalPostres: 0,
+        totalIngredientes: 0,
+        ingredientesBajos: 0
+    };
+    
+    // Cargar estadísticas del dashboard (opcional)
+    $scope.loadDashboardStats = function() {
+        // Implementar según tus necesidades
+        console.log("Cargando estadísticas del dashboard");
+    };
+    
+    $scope.loadDashboardStats();
 })
 
-// ======================================
-// CONTROLLER DE POSTRES CON BÚSQUEDA INTEGRADA
-// ======================================
-app.controller("postresCtrl", function ($scope, $http) {
+// ========================================
+// CONTROLADORES EXISTENTES CON VERIFICACIÓN DE AUTH
+// ========================================
+
+// CONTROLLER DE POSTRES CON VERIFICACIÓN DE AUTENTICACIÓN
+app.controller("postresCtrl", function ($scope, $http, AuthService) {
+    console.log("Inicializando controlador de postres");
+    
+    // Verificar autenticación
+    if (!AuthService.isAuthenticated()) {
+        console.log("No autenticado en postresCtrl");
+        return;
+    }
+    
     let timeoutPostres;
     
     // Función principal de búsqueda de postres
@@ -88,6 +438,10 @@ app.controller("postresCtrl", function ($scope, $http) {
                 console.log("Tabla de postres actualizada sin filtro");
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar postres:", error);
+                if (xhr.status === 401) {
+                    // Sesión expirada, redirigir al login
+                    $scope.$root.logout();
+                }
                 $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-danger'>Error al cargar postres</td></tr>");
             });
         } else {
@@ -134,6 +488,10 @@ app.controller("postresCtrl", function ($scope, $http) {
                 }
             }).fail(function(xhr, status, error) {
                 console.error("Error en búsqueda de postres:", error);
+                if (xhr.status === 401) {
+                    // Sesión expirada, redirigir al login
+                    $scope.$root.logout();
+                }
                 $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-danger'><i class='bi bi-exclamation-triangle'></i> Error en la búsqueda</td></tr>");
             });
         }
@@ -205,10 +563,16 @@ app.controller("postresCtrl", function ($scope, $http) {
             // Mantener búsqueda activa después de guardar
             const terminoBusqueda = $("#txtBuscarPostre").val() || "";
             buscarPostres(terminoBusqueda);
-            toast("Postre guardado correctamente", 3);
+            if (typeof toast === 'function') {
+                toast("Postre guardado correctamente", 3);
+            }
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar postre:", error);
-            alert("Error al guardar el postre");
+            if (xhr.status === 401) {
+                $scope.$root.logout();
+            } else {
+                alert("Error al guardar el postre");
+            }
         }).always(function() {
             $submitBtn.prop('disabled', false);
         });
@@ -225,20 +589,30 @@ app.controller("postresCtrl", function ($scope, $http) {
         if (id && id !== 'undefined' && id !== undefined) {
             $.get(`/postres/ingredientes/${id}`, function (html) {
                 console.log("Ingredientes cargados exitosamente");
-                modal(html, "Ingredientes del Postre", [
-                    {
-                        html: '<i class="bi bi-x-circle"></i> Cerrar', 
-                        class: "btn btn-secondary", 
-                        fun: function (event) {
-                            console.log("Cerrando modal de ingredientes");
-                            $(event.target).blur();
-                            setTimeout(closeModal, 10);
+                if (typeof modal === 'function') {
+                    modal(html, "Ingredientes del Postre", [
+                        {
+                            html: '<i class="bi bi-x-circle"></i> Cerrar', 
+                            class: "btn btn-secondary", 
+                            fun: function (event) {
+                                console.log("Cerrando modal de ingredientes");
+                                $(event.target).blur();
+                                setTimeout(function() {
+                                    if (typeof closeModal === 'function') {
+                                        closeModal();
+                                    }
+                                }, 10);
+                            }
                         }
-                    }
-                ]);
+                    ]);
+                }
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar ingredientes:", error);
-                alert("Error al cargar ingredientes: " + error);
+                if (xhr.status === 401) {
+                    $scope.$root.logout();
+                } else {
+                    alert("Error al cargar ingredientes: " + error);
+                }
             });
         } else {
             console.error("ID no encontrado");
@@ -270,7 +644,11 @@ app.controller("postresCtrl", function ($scope, $http) {
             }
         }).fail(function(xhr, status, error) {
             console.error("Error al cargar postre:", error);
-            alert("Error al cargar los datos del postre");
+            if (xhr.status === 401) {
+                $scope.$root.logout();
+            } else {
+                alert("Error al cargar los datos del postre");
+            }
         });
     });
 
@@ -290,10 +668,16 @@ app.controller("postresCtrl", function ($scope, $http) {
                 // Mantener búsqueda activa después de eliminar
                 const terminoBusqueda = $("#txtBuscarPostre").val() || "";
                 buscarPostres(terminoBusqueda);
-                toast("Postre eliminado correctamente", 3);
+                if (typeof toast === 'function') {
+                    toast("Postre eliminado correctamente", 3);
+                }
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar postre:", error);
-                alert("Error al eliminar el postre");
+                if (xhr.status === 401) {
+                    $scope.$root.logout();
+                } else {
+                    alert("Error al eliminar el postre");
+                }
             }).always(function() {
                 $btn.prop('disabled', false);
             });
@@ -308,9 +692,17 @@ app.controller("postresCtrl", function ($scope, $http) {
 });
 
 // ======================================
-// CONTROLLER DE INGREDIENTES CON BÚSQUEDA INTEGRADA
+// CONTROLLER DE INGREDIENTES CON VERIFICACIÓN DE AUTH
 // ======================================
-app.controller("ingredientesCtrl", function ($scope, $http) {
+app.controller("ingredientesCtrl", function ($scope, $http, AuthService) {
+    console.log("Inicializando controlador de ingredientes");
+    
+    // Verificar autenticación
+    if (!AuthService.isAuthenticated()) {
+        console.log("No autenticado en ingredientesCtrl");
+        return;
+    }
+    
     let timeoutIngredientes;
     
     // Función principal de búsqueda de ingredientes
@@ -324,6 +716,9 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
                 console.log("Tabla de ingredientes actualizada sin filtro");
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar ingredientes:", error);
+                if (xhr.status === 401) {
+                    $scope.$root.logout();
+                }
                 $("#tbodyIngredientes").html("<tr><td colspan='4' class='text-center text-danger'>Error al cargar ingredientes</td></tr>");
             });
         } else {
@@ -375,6 +770,9 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
                 }
             }).fail(function(xhr, status, error) {
                 console.error("Error en búsqueda de ingredientes:", error);
+                if (xhr.status === 401) {
+                    $scope.$root.logout();
+                }
                 $("#tbodyIngredientes").html("<tr><td colspan='4' class='text-center text-danger'><i class='bi bi-exclamation-triangle'></i> Error en la búsqueda</td></tr>");
             });
         }
@@ -446,10 +844,16 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
             // Mantener búsqueda activa después de guardar
             const terminoBusqueda = $("#txtBuscarIngrediente").val() || "";
             buscarIngredientes(terminoBusqueda);
-            toast("Ingrediente guardado correctamente", 3);
+            if (typeof toast === 'function') {
+                toast("Ingrediente guardado correctamente", 3);
+            }
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar ingrediente:", error);
-            alert("Error al guardar el ingrediente");
+            if (xhr.status === 401) {
+                $scope.$root.logout();
+            } else {
+                alert("Error al guardar el ingrediente");
+            }
         }).always(function() {
             $submitBtn.prop('disabled', false);
         });
@@ -479,7 +883,11 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
             }
         }).fail(function(xhr, status, error) {
             console.error("Error al cargar ingrediente:", error);
-            alert("Error al cargar los datos del ingrediente");
+            if (xhr.status === 401) {
+                $scope.$root.logout();
+            } else {
+                alert("Error al cargar los datos del ingrediente");
+            }
         });
     });
 
@@ -499,10 +907,16 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
                 // Mantener búsqueda activa después de eliminar
                 const terminoBusqueda = $("#txtBuscarIngrediente").val() || "";
                 buscarIngredientes(terminoBusqueda);
-                toast("Ingrediente eliminado correctamente", 3);
+                if (typeof toast === 'function') {
+                    toast("Ingrediente eliminado correctamente", 3);
+                }
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar ingrediente:", error);
-                alert("Error al eliminar el ingrediente");
+                if (xhr.status === 401) {
+                    $scope.$root.logout();
+                } else {
+                    alert("Error al eliminar el ingrediente");
+                }
             }).always(function() {
                 $btn.prop('disabled', false);
             });
@@ -516,13 +930,33 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
     });
 });
 
-// ======================================
-// FUNCIONES ADICIONALES Y MEJORAS
-// ======================================
+// ========================================
+// FUNCIONES ADICIONALES Y MEJORAS CON AUTH
+// ========================================
+
+// Interceptor global para manejar errores 401 (no autorizado)
+$(document).ajaxError(function(event, xhr, settings, thrownError) {
+    if (xhr.status === 401) {
+        console.log("Error 401 detectado, sesión expirada");
+        
+        // Limpiar datos de autenticación
+        const scope = angular.element(document.body).scope();
+        if (scope && scope.$root && scope.$root.logout) {
+            scope.$root.logout();
+        } else {
+            // Fallback manual
+            localStorage.removeItem('rememberedUser');
+            window.location.hash = '#/login';
+            if (typeof toast === 'function') {
+                toast("Sesión expirada. Por favor, inicia sesión nuevamente.", 4);
+            }
+        }
+    }
+});
 
 // Función para mostrar atajos de teclado (opcional)
 $(document).ready(function() {
-    console.log("Inicializando funciones de búsqueda mejoradas");
+    console.log("Inicializando funciones de búsqueda mejoradas con auth");
     
     // Atajos de teclado para búsqueda
     $(document).on("keydown", function(e) {
@@ -547,6 +981,17 @@ $(document).ready(function() {
             if ($("#txtBuscarIngrediente").is(":focus")) {
                 $("#btnLimpiarIngrediente").click();
                 $("#txtBuscarIngrediente").blur();
+            }
+        }
+        
+        // Ctrl + L para logout rápido (opcional)
+        if (e.ctrlKey && e.key === 'l') {
+            e.preventDefault();
+            const scope = angular.element(document.body).scope();
+            if (scope && scope.$root && scope.$root.logout && scope.$root.isAuthenticated) {
+                if (confirm("¿Deseas cerrar sesión?")) {
+                    scope.$root.logout();
+                }
             }
         }
     });
@@ -579,9 +1024,9 @@ $(document).ready(function() {
     }, 3000);
 });
 
-// ======================================
-// CONFIGURACIÓN DE FECHA Y HORA
-// ======================================
+// ========================================
+// CONFIGURACIÓN DE FECHA Y HORA (EXISTENTE)
+// ========================================
 const DateTime = luxon.DateTime
 let lxFechaHora
 
@@ -603,9 +1048,9 @@ document.addEventListener("DOMContentLoaded", function (event) {
     console.log("Menú activo configurado para:", location.hash);
 })
 
-// ======================================
-// FUNCIONES ADICIONALES PARA MODAL
-// ======================================
+// ========================================
+// FUNCIONES ADICIONALES PARA MODAL (MEJORADAS)
+// ========================================
 
 // Función mejorada para cerrar modal sin errores de aria-hidden
 function closeModalFixed() {
@@ -627,9 +1072,25 @@ function closeModalFixed() {
     }, 10);
 }
 
+// Función de logout desde cualquier lugar de la aplicación
+function globalLogout() {
+    console.log("Logout global iniciado");
+    const scope = angular.element(document.body).scope();
+    if (scope && scope.$root && scope.$root.logout) {
+        scope.$root.logout();
+    } else {
+        // Fallback manual
+        localStorage.removeItem('rememberedUser');
+        window.location.hash = '#/login';
+        if (typeof toast === 'function') {
+            toast("Sesión cerrada", 3);
+        }
+    }
+}
+
 // Manejo de eventos de Bootstrap para evitar problemas de aria-hidden
 $(document).ready(function() {
-    console.log("Configurando eventos del modal");
+    console.log("Configurando eventos del modal con auth");
     
     // Cuando el modal se está ocultando
     $(document).on('hide.bs.modal', '#modal-message', function (e) {
@@ -647,6 +1108,106 @@ $(document).ready(function() {
         // Limpiar cualquier focus residual
         $('body').focus();
     });
+    
+    // Agregar botón de logout en el navbar si existe
+    setTimeout(function() {
+        const scope = angular.element(document.body).scope();
+        if (scope && scope.$root) {
+            scope.$watch('$root.isAuthenticated', function(isAuth) {
+                if (isAuth && $('.navbar-nav').length) {
+                    // Agregar información del usuario y botón de logout
+                    const userInfo = `
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{$root.currentUser.Nombre_Usuario}}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Mi Perfil</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" ng-click="logout()">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                                </a></li>
+                            </ul>
+                        </li>
+                    `;
+                    
+                    // Solo agregar si no existe ya
+                    if (!$('.nav-item.dropdown').length) {
+                        $('.navbar-nav').append(userInfo);
+                    }
+                }
+            });
+        }
+    }, 1000);
 });
 
+// ========================================
+// FUNCIONES DE UTILIDAD PARA DEBUGGING
+// ========================================
 
+// Función para verificar el estado de autenticación desde la consola
+window.checkAuthStatus = function() {
+    const scope = angular.element(document.body).scope();
+    if (scope && scope.$root) {
+        console.log("Estado de autenticación:", {
+            isAuthenticated: scope.$root.isAuthenticated,
+            currentUser: scope.$root.currentUser,
+            rememberedUser: localStorage.getItem('rememberedUser')
+        });
+    } else {
+        console.log("No se pudo acceder al scope de Angular");
+    }
+};
+
+// Función para forzar re-verificación de sesión
+window.refreshSession = function() {
+    const scope = angular.element(document.body).scope();
+    if (scope && scope.$root) {
+        const AuthService = angular.element(document.body).injector().get('AuthService');
+        AuthService.checkSession().then(function(sessionData) {
+            if (sessionData && sessionData.success) {
+                scope.$root.currentUser = sessionData.user;
+                scope.$root.isAuthenticated = true;
+                console.log("Sesión refrescada:", sessionData.user);
+            } else {
+                scope.$root.currentUser = null;
+                scope.$root.isAuthenticated = false;
+                console.log("No hay sesión activa");
+            }
+            scope.$apply();
+        });
+    }
+};
+
+// ========================================
+// CONFIGURACIÓN DE TIMEOUTS PARA SESIÓN
+// ========================================
+
+// Warning de sesión próxima a expirar (opcional)
+let sessionWarningShown = false;
+let sessionTimeoutWarning;
+
+function resetSessionWarning() {
+    clearTimeout(sessionTimeoutWarning);
+    sessionWarningShown = false;
+    
+    // Mostrar warning 5 minutos antes de que expire la sesión (si es de 7 días)
+    sessionTimeoutWarning = setTimeout(function() {
+        if (!sessionWarningShown) {
+            sessionWarningShown = true;
+            if (confirm("Tu sesión expirará pronto. ¿Deseas renovarla?")) {
+                window.refreshSession();
+            }
+        }
+    }, 1000 * 60 * 60 * 24 * 7 - 1000 * 60 * 5); // 7 días - 5 minutos
+}
+
+// Resetear warning en actividad del usuario
+$(document).on('click keypress scroll', function() {
+    const scope = angular.element(document.body).scope();
+    if (scope && scope.$root && scope.$root.isAuthenticated) {
+        resetSessionWarning();
+    }
+});
+
+console.log("Sistema de login con arquitectura por capas inicializado correctamente");
