@@ -58,10 +58,7 @@ def index():
     """Página principal - redirige a la app de AngularJS"""
     return render_template("index.html")
 
-@app.route("/app")
-def app_view():
-    """Vista principal de la aplicación (dashboard)"""
-    return render_template("app.html")
+
 
 # ========================================
 # RUTAS PARA TEMPLATES DE ANGULARJS
