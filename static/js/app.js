@@ -56,25 +56,50 @@ function ($rootScope, $location, $timeout, $http, AuthService) {
 // ========================================
 // SERVICIO DE AUTENTICACIÓN
 // ========================================
-app.service("AuthService", function ($rootScope, $http, $location) {
+app.service("AuthService", function ($rootScope, $http, $q, $location) {
     let authenticated = false;
 
+    // Login
     this.login = function (credentials) {
-        return $http.post("/login", credentials).then(function () {
-            authenticated = true;
-            $rootScope.isAuthenticated = true;
-            $location.path("/postres"); // ✅ dashboard
-        });
+        const deferred = $q.defer();
+        $http.post("/api/login", credentials)
+            .then(function (response) {
+                if (response.data.success) {
+                    authenticated = true;
+                    $rootScope.isAuthenticated = true;
+                    deferred.resolve(response.data);
+                } else {
+                    authenticated = false;
+                    $rootScope.isAuthenticated = false;
+                    deferred.reject(response.data.message || "Error de login");
+                }
+            })
+            .catch(function (error) {
+                authenticated = false;
+                $rootScope.isAuthenticated = false;
+                let msg = "Error de servidor";
+                if (error.data && error.data.message) msg = error.data.message;
+                deferred.reject(msg);
+            });
+        return deferred.promise;
     };
 
+    // Logout
     this.logout = function () {
-        return $http.post("/logout").then(function () {
-            authenticated = false;
-            $rootScope.isAuthenticated = false;
-            $location.path("/login");
-        });
+        const deferred = $q.defer();
+        $http.post("/api/logout")
+            .then(function (response) {
+                authenticated = false;
+                $rootScope.isAuthenticated = false;
+                deferred.resolve(response.data);
+            })
+            .catch(function (error) {
+                deferred.reject("Error al cerrar sesión");
+            });
+        return deferred.promise;
     };
 
+    // Verificar autenticación
     this.isAuthenticated = function () {
         return authenticated;
     };
@@ -84,13 +109,56 @@ app.service("AuthService", function ($rootScope, $http, $location) {
 // CONTROLADOR DE LOGIN
 // ========================================
 app.controller("loginCtrl", function ($scope, AuthService) {
-    $scope.credentials = {};
-    $scope.login = function () {
-        AuthService.login($scope.credentials).catch(function () {
-            $scope.error = "Usuario o contraseña inválidos";
-        });
+    $scope.credentials = {
+        loginField: "",
+        password: "",
+        rememberMe: false
+    };
+
+    $scope.isLoading = false;
+    $scope.alert = {
+        show: false,
+        message: "",
+        type: "danger" // success / danger
+    };
+
+    $scope.showAlert = function(message, type="danger") {
+        $scope.alert.message = message;
+        $scope.alert.type = type;
+        $scope.alert.show = true;
+    };
+
+    $scope.hideAlert = function() {
+        $scope.alert.show = false;
+    };
+
+    $scope.login = function() {
+        $scope.hideAlert();
+        $scope.isLoading = true;
+
+        AuthService.login($scope.credentials)
+            .then(function (data) {
+                // Login exitoso
+                $scope.showAlert(data.message || "¡Login exitoso!", "success");
+
+                // Redirigir al dashboard
+                setTimeout(function () {
+                    window.location.href = "#!/postres";
+                }, 800);
+            })
+            .catch(function (errorMessage) {
+                $scope.showAlert(errorMessage, "danger");
+            })
+            .finally(function () {
+                $scope.isLoading = false;
+            });
+    };
+
+    $scope.showForgotPasswordModal = function() {
+        alert("Aquí se abriría el modal de recuperación de contraseña.");
     };
 });
+
 
 // ========================================
 // CONTROLADOR DE POSTRES (DASHBOARD)
@@ -284,4 +352,5 @@ $(document).ready(function () {
         tipIndex = (tipIndex + 1) % tips.length;
     }, 4000);
 });
+
 
