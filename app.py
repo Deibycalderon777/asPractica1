@@ -51,7 +51,10 @@ app.register_blueprint(ingrediente_bp)
 # ========================================
 # RUTAS PRINCIPALES Y TEMPLATES
 # ========================================
-
+@app.route("/login")
+def login_view():
+    """Template para la página de login"""
+    return render_template("login.html")
 
 
 @app.route("/postres")
@@ -64,10 +67,7 @@ def ingredientes_view():
     """Template para la sección de ingredientes"""
     return render_template("ingredientes.html")
 
-@app.route("/login")
-def login_view():
-    """Template para la página de login"""
-    return render_template("login.html")
+
 
 # ========================================
 # MANEJO DE ERRORES
