@@ -52,9 +52,6 @@ app.register_blueprint(ingrediente_bp)
 # RUTAS PRINCIPALES Y TEMPLATES
 # ========================================
 
-@app.route("/login")
-def login():
-    return render_template("login.html")
 
 
 @app.route("/postres")
