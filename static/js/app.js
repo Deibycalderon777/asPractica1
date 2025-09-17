@@ -11,9 +11,15 @@ app.config(function ($routeProvider, $locationProvider) {
         redirectTo: "/postres" // ✅ directo al dashboard
     })
 .when("/login", {
-    templateUrl: "templates/login.html",
-    controller: "loginCtrl"
+    controller: "loginCtrl",
+    resolve: {
+        redirect: function() {
+            // Redirige al endpoint del servidor
+            window.location.href = "/login";
+        }
+    }
 })
+
 .when("/postres", {
     templateUrl: "templates/postres.html",
     controller: "postresCtrl",
@@ -352,5 +358,6 @@ $(document).ready(function () {
         tipIndex = (tipIndex + 1) % tips.length;
     }, 4000);
 });
+
 
 
