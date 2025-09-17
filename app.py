@@ -52,10 +52,10 @@ app.register_blueprint(ingrediente_bp)
 # RUTAS PRINCIPALES Y TEMPLATES
 # ========================================
 
-@app.route("/")
-def index():
-    """Página principal - carga AngularJS app"""
-    return render_template("index.html")
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
 
 @app.route("/postres")
 def postres_view():
