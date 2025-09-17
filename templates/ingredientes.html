@@ -1,0 +1,53 @@
+<!-- Campo de búsqueda -->
+<div class="mb-3">
+    <div class="input-group">
+        <span class="input-group-text">
+            <i class="bi bi-search"></i>
+        </span>
+        <input type="text" 
+               class="form-control" 
+               id="txtBuscarIngrediente" 
+               placeholder="Buscar ingredientes por nombre o existencias...">
+        <button type="button" 
+                class="btn btn-outline-secondary" 
+                id="btnLimpiarIngrediente"
+                title="Limpiar búsqueda">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+    <small class="text-muted">🔍 Búsqueda instantánea habilitada</small>
+</div>
+
+
+
+<form id="frmIngredientes" method="post">
+    <div class="mb-1">
+        <label>Nombre Ingrediente</label>
+        <input type="text" class="form-control" id="txtNombre" name="txtNombre">
+    </div>
+    <div class="mb-1">
+        <label>Existencias</label>
+        <input type="number" class="form-control" id="txtExistencias" name="txtExistencias">
+    </div>
+    
+    <div class="mb-1 text-end">
+     <button class="btn btn-success">Guardar</button>
+    </div>
+    <div class="mb-1 text-end">
+     <button type="button" class="btn btn-secondary" id="btnCancelarIngrediente">Cancelar</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead class="table-active">
+            <tr>
+                <th>Id</th>
+                <th>Nombre Ingrediente</th>
+                <th>Existencias</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="tbodyIngredientes"></tbody>
+    </table>
+</div>

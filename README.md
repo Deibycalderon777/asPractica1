@@ -1,1 +1,1 @@
-Antes de hacer cualquier edicion por favor realiza un backup 
+proyecto realizado con Arquitectura por Capas e implementacion de Pusher
