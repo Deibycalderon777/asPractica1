@@ -5,4 +5,5 @@ pytz
 Flask-Cors
 pusher
 pymysql 
+Flask-Login
 
