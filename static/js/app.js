@@ -13,13 +13,10 @@ app.config(function ($routeProvider, $locationProvider) {
     $locationProvider.hashPrefix("")
 
     $routeProvider
-    .when('/', { 
-        templateUrl: 'views/login.html', 
-        controller: 'loginCtrl', public: true })
-        
-    .when('/inicio', { 
-        templateUrl: 'views/inicio.html' })
-        
+    .when("/", {
+        templateUrl: "/app",
+        controller: "appCtrl"
+    })
     .when("/postres", {
         templateUrl: "/postres",
         controller: "postresCtrl"
@@ -70,25 +67,6 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
         }
     })
 }])
-
-app.controller('loginCtrl', function($scope, $http, $location){
-  $scope.usuario = ''; $scope.contrasena = ''; $scope.error = '';
-
-  $scope.login = function(){
-    $http.post('php/login.php', { usuario: $scope.usuario, contrasena: $scope.contrasena })
-      .then(function(r){
-        if (r.data.ok){
-          localStorage.setItem('auth','1');
-          localStorage.setItem('usuario', r.data.usuario);
-          $location.path('/inicio');
-        } else {
-          $scope.error = r.data.msg || 'Credenciales inválidas';
-        }
-      }, function(){
-        $scope.error = 'Error de conexión';
-      });
-  };
-});
 
 app.controller("appCtrl", function ($scope, $http) {
 })
@@ -670,6 +648,5 @@ $(document).ready(function() {
         $('body').focus();
     });
 });
-
 
 
