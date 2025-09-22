@@ -83,24 +83,29 @@
         <i class="bi bi-clock"></i>
          {{ '{{ angularjsHora }}' }}
     </div>
+<ul class="app-menu nav nav-underline justify-content-center align-items-center">
+    <li class="nav-item">
+        <a class="nav-link" href="#/">Login</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#/postres">Postres</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#/ingredientes">Ingredientes</a>
+    </li>
 
-    <ul class="app-menu nav nav-underline justify-content-center">
-        <li class="nav-item">
-            <a class="nav-link" href="#/">Login</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#/postres">Postres</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#/ingredientes">Ingredientes</a>
-        </li>
-        <li class="nav-item">
-    <a class="nav-link" href="#" ng-click="$root.logout()">
-        <i class="bi bi-box-arrow-right"></i> Logout
-    </a>
+    <!-- Mostrar solo si hay usuario logueado -->
+   <li class="nav-item ms-3" ng-show="$root.currentUser">
+    <span class="navbar-text me-2">
+        {% raw %}Bienvenido, {{$root.currentUser.username}}{% endraw %}
+    </span>
+    <button class="btn btn-sm btn-outline-danger" ng-click="$root.logout()">
+        <i class="bi bi-box-arrow-right"></i> Salir
+    </button>
 </li>
-    </ul>
- 
+
+</ul>
+
 
     <div id="appContent" class="app-content container p-3 {{ '{{ slide }}' }}" ng-view></div>
 
