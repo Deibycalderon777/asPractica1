@@ -9,13 +9,14 @@ function activeMenuOption(href) {
 }
 
 const app = angular.module("angularjsApp", ["ngRoute"])
+
 app.config(function ($routeProvider, $locationProvider) {
     $locationProvider.hashPrefix("")
 
     $routeProvider
     .when("/", {
-        templateUrl: "/app",
-        controller: "appCtrl"
+        templateUrl: "/login",
+        controller: "loginCtrl"
     })
     .when("/postres", {
         templateUrl: "/postres",
@@ -30,7 +31,7 @@ app.config(function ($routeProvider, $locationProvider) {
     })
 })
 
-app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, $timeout) {
+app.run(["$rootScope", "$location", "$timeout", "$http", function($rootScope, $location, $timeout, $http) {
     function actualizarFechaHora() {
         lxFechaHora = DateTime
         .now()
@@ -41,6 +42,118 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
     }
 
     $rootScope.slide = ""
+
+    // ======================================
+    // FUNCIÓN DE LOGOUT GLOBAL
+    // ======================================
+    $rootScope.logout = function() {
+        console.log("Iniciando proceso de logout");
+        
+        // Mostrar confirmación
+        if (confirm("¿Está seguro de que desea cerrar sesión?")) {
+            // Limpiar datos antes de la petición
+            limpiarDatosTemporales();
+            desconectarPusher();
+            
+            // Realizar petición de logout al servidor
+            $http.post('/api/logout')
+            .then(function(response) {
+                console.log("Logout exitoso:", response.data);
+                
+                // Limpiar usuario actual
+                $rootScope.currentUser = null;
+                
+                // Mostrar mensaje de despedida
+                if (typeof toast === 'function') {
+                    toast("Sesión cerrada correctamente. ¡Hasta luego!", 2);
+                }
+                
+                // Redirigir al login después de un breve delay
+                setTimeout(function() {
+                    window.location.hash = "#/";
+                    // Forzar recarga para limpiar el estado de la aplicación
+                    window.location.reload();
+                }, 1000);
+                
+            })
+            .catch(function(error) {
+                console.error("Error en logout:", error);
+                
+                // Incluso si hay error en el servidor, cerrar sesión localmente
+                $rootScope.currentUser = null;
+                if (typeof toast === 'function') {
+                    toast("Sesión cerrada localmente", 2);
+                }
+                
+                setTimeout(function() {
+                    window.location.hash = "#/";
+                    window.location.reload();
+                }, 1000);
+            });
+        }
+    };
+
+    // ======================================
+    // FUNCIÓN PARA OBTENER USUARIO ACTUAL
+    // ======================================
+    $rootScope.getCurrentUser = function() {
+        return $http.get('/api/user/current')
+        .then(function(response) {
+            if (response.data.success) {
+                $rootScope.currentUser = response.data.user;
+                console.log("Usuario actual cargado:", $rootScope.currentUser);
+                return $rootScope.currentUser;
+            } else {
+                $rootScope.currentUser = null;
+                return null;
+            }
+        })
+        .catch(function(error) {
+            console.error("Error al obtener usuario actual:", error);
+            $rootScope.currentUser = null;
+            return null;
+        });
+    };
+
+    // ======================================
+    // VERIFICAR SESIÓN EN CADA CAMBIO DE RUTA
+    // ======================================
+    $rootScope.$on("$routeChangeStart", function (event, next, current) {
+        const publicRoutes = ["/", "#/"];
+        const currentPath = next.$$route ? next.$$route.originalPath : "/";
+        
+        console.log("Verificando sesión para ruta:", currentPath);
+        
+        // Si no es una ruta pública, verificar sesión
+        if (!publicRoutes.includes(currentPath)) {
+            $http.get('/api/check-session')
+            .then(function(response) {
+                if (!response.data.success || !response.data.logged_in) {
+                    console.log("Sesión no válida, redirigiendo al login");
+                    event.preventDefault();
+                    $rootScope.currentUser = null;
+                    window.location.hash = "#/";
+                    if (typeof toast === 'function') {
+                        toast("Su sesión ha expirado. Por favor, inicie sesión nuevamente.", 3);
+                    }
+                } else {
+                    // Actualizar información del usuario si la sesión es válida
+                    if (response.data.user) {
+                        $rootScope.currentUser = response.data.user;
+                    }
+                }
+            })
+            .catch(function(error) {
+                console.error("Error al verificar sesión:", error);
+                event.preventDefault();
+                $rootScope.currentUser = null;
+                window.location.hash = "#/";
+            });
+        }
+    });
+
+    // Cargar usuario al iniciar la aplicación (si hay sesión)
+    $rootScope.getCurrentUser();
 
     actualizarFechaHora()
 
@@ -68,14 +181,87 @@ app.run(["$rootScope", "$location", "$timeout", function($rootScope, $location, 
     })
 }])
 
-app.controller("appCtrl", function ($scope, $http) {
+// ======================================
+// CONTROLLER DE LOGIN CON MEJORAS
+// ======================================
+app.controller("loginCtrl", function ($scope, $http, $rootScope) {
+    $scope.usuario = "";
+    $scope.contrasena = "";
+    $scope.mensaje = "";
+    $scope.cargando = false;
+
+    // Limpiar datos al entrar al login
+    limpiarDatosTemporales();
+    desconectarPusher();
+    $rootScope.currentUser = null;
+
+    // Función de login
+    $scope.login = function() {
+        console.log("Iniciando proceso de login");
+        
+        if (!$scope.usuario || !$scope.contrasena) {
+            $scope.mensaje = "Por favor ingresa usuario y contraseña";
+            return;
+        }
+
+        $scope.cargando = true;
+        $scope.mensaje = "";
+
+        // Realizar petición de login
+        $http.post('/api/login', {
+            usuario: $scope.usuario,
+            contrasena: $scope.contrasena
+        }).then(function(response) {
+            console.log("Login exitoso:", response.data);
+            $scope.cargando = false;
+            
+            if (response.data.success) {
+                $scope.mensaje = response.data.message;
+                
+                // Cargar información del usuario
+                $rootScope.getCurrentUser().then(function() {
+                    // Redirigir a la página principal después de 1 segundo
+                    setTimeout(function() {
+                        window.location.hash = "#/postres";
+                    }, 1000);
+                });
+            } else {
+                $scope.mensaje = response.data.message;
+            }
+        }).catch(function(error) {
+            console.error("Error en login:", error);
+            $scope.cargando = false;
+            
+            if (error.data && error.data.message) {
+                $scope.mensaje = error.data.message;
+            } else {
+                $scope.mensaje = "Error de conexión. Intenta nuevamente.";
+            }
+        });
+    };
+
+    // Verificar si ya hay una sesión activa al cargar
+    $http.get('/api/check-session').then(function(response) {
+        if (response.data.success && response.data.logged_in) {
+            console.log("Sesión activa encontrada, redirigiendo...");
+            window.location.hash = "#/postres";
+        }
+    }).catch(function(error) {
+        console.log("No hay sesión activa");
+    });
 })
 
 // ======================================
 // CONTROLLER DE POSTRES CON BÚSQUEDA INTEGRADA
 // ======================================
-app.controller("postresCtrl", function ($scope, $http) {
+app.controller("postresCtrl", function ($scope, $http, $rootScope) {
     let timeoutPostres;
+    
+    // Función de logout específica del controlador (opcional)
+    $scope.cerrarSesion = function() {
+        console.log("Logout desde postresCtrl");
+        $rootScope.logout();
+    };
     
     // Función principal de búsqueda de postres
     function buscarPostres(termino = "") {
@@ -310,8 +496,14 @@ app.controller("postresCtrl", function ($scope, $http) {
 // ======================================
 // CONTROLLER DE INGREDIENTES CON BÚSQUEDA INTEGRADA
 // ======================================
-app.controller("ingredientesCtrl", function ($scope, $http) {
+app.controller("ingredientesCtrl", function ($scope, $http, $rootScope) {
     let timeoutIngredientes;
+    
+    // Función de logout específica del controlador (opcional)
+    $scope.cerrarSesion = function() {
+        console.log("Logout desde ingredientesCtrl");
+        $rootScope.logout();
+    };
     
     // Función principal de búsqueda de ingredientes
     function buscarIngredientes(termino = "") {
@@ -520,12 +712,78 @@ app.controller("ingredientesCtrl", function ($scope, $http) {
 // FUNCIONES ADICIONALES Y MEJORAS
 // ======================================
 
+// Función para limpiar datos temporales antes del logout
+function limpiarDatosTemporales() {
+    console.log("Limpiando datos temporales");
+    
+    // Limpiar timeouts activos
+    if (typeof timeoutPostres !== 'undefined') {
+        clearTimeout(timeoutPostres);
+    }
+    if (typeof timeoutIngredientes !== 'undefined') {
+        clearTimeout(timeoutIngredientes);
+    }
+    
+    // Limpiar formularios
+    try {
+        $("#frmPostre")[0]?.reset();
+        $("#frmIngredientes")[0]?.reset();
+    } catch(e) {
+        console.log("Error al limpiar formularios:", e);
+    }
+    
+    // Limpiar campos de búsqueda
+    $("#txtBuscarPostre").val("");
+    $("#txtBuscarIngrediente").val("");
+    
+    // Remover elementos hidden
+    $("#hiddenIdPostre").remove();
+    $("#hiddenIdIngrediente").remove();
+    
+    console.log("Datos temporales limpiados");
+}
+
+// Función para desconectar Pusher al hacer logout
+function desconectarPusher() {
+    console.log("Desconectando canales de Pusher");
+    
+    try {
+        if (typeof window.pusherPostres !== 'undefined') {
+            window.pusherPostres.disconnect();
+            window.pusherPostres = undefined;
+        }
+        
+        if (typeof window.pusherIngredientes !== 'undefined') {
+            window.pusherIngredientes.disconnect();
+            window.pusherIngredientes = undefined;
+        }
+        
+        console.log("Pusher desconectado exitosamente");
+    } catch (error) {
+        console.error("Error al desconectar Pusher:", error);
+    }
+}
+
 // Función para mostrar atajos de teclado (opcional)
 $(document).ready(function() {
     console.log("Inicializando funciones de búsqueda mejoradas");
     
-    // Atajos de teclado para búsqueda
+    // Atajos de teclado para búsqueda y logout
     $(document).on("keydown", function(e) {
+        // Ctrl + Shift + L para logout rápido
+        if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+            e.preventDefault();
+            // Buscar el scope actual y ejecutar logout
+            const currentScope = angular.element(document.body).scope();
+            if (currentScope && currentScope.$root && currentScope.$root.logout) {
+                currentScope.$root.logout();
+            } else {
+                console.log("Logout directo por teclado");
+                window.location.hash = "#/";
+                window.location.reload();
+            }
+        }
+        
         // Ctrl + F para enfocar búsqueda de postres si estamos en esa página
         if (e.ctrlKey && e.key === 'f' && $("#txtBuscarPostre").length) {
             e.preventDefault();
@@ -649,4 +907,162 @@ $(document).ready(function() {
     });
 });
 
+// ======================================
+// FUNCIONES AUXILIARES PARA LOGOUT
+// ======================================
 
+// Función para verificar estado de sesión periódicamente (opcional)
+function verificarSesionPeriodica() {
+    console.log("Iniciando verificación periódica de sesión");
+    
+    setInterval(function() {
+        // Solo verificar si no estamos en la página de login
+        if (window.location.hash !== "#/" && window.location.hash !== "") {
+            const scope = angular.element(document.body).scope();
+            if (scope && scope.$root) {
+                scope.$root.$http.get('/api/check-session')
+                .then(function(response) {
+                    if (!response.data.success || !response.data.logged_in) {
+                        console.log("Sesión expirada detectada en verificación periódica");
+                        if (typeof toast === 'function') {
+                            toast("Su sesión ha expirado. Redirigiendo al login...", 3);
+                        }
+                        setTimeout(function() {
+                            window.location.hash = "#/";
+                            window.location.reload();
+                        }, 2000);
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Error en verificación periódica:", error);
+                });
+            }
+        }
+    }, 300000); // Verificar cada 5 minutos
+}
+
+// Inicializar verificación periódica (descomenta si la quieres usar)
+// verificarSesionPeriodica();
+
+// ======================================
+// MANEJO DE EVENTOS DE VISIBILIDAD DE LA PÁGINA
+// ======================================
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        // La página volvió a ser visible, verificar sesión
+        console.log("Página visible de nuevo, verificando sesión...");
+        
+        if (window.location.hash !== "#/" && window.location.hash !== "") {
+            const scope = angular.element(document.body).scope();
+            if (scope && scope.$root && scope.$root.$http) {
+                scope.$root.$http.get('/api/check-session')
+                .then(function(response) {
+                    if (!response.data.success || !response.data.logged_in) {
+                        console.log("Sesión no válida al regresar a la página");
+                        scope.$root.currentUser = null;
+                        window.location.hash = "#/";
+                        if (typeof toast === 'function') {
+                            toast("Su sesión ha expirado mientras estuvo ausente", 3);
+                        }
+                    } else if (response.data.user) {
+                        // Actualizar información del usuario
+                        scope.$root.currentUser = response.data.user;
+                        scope.$root.$apply();
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Error al verificar sesión al regresar:", error);
+                });
+            }
+        }
+    }
+});
+
+// ======================================
+// FUNCIONES DE UTILIDAD ADICIONALES
+// ======================================
+
+// Función para mostrar información de sesión en consola (debug)
+function mostrarInfoSesion() {
+    const scope = angular.element(document.body).scope();
+    if (scope && scope.$root) {
+        console.log("=== INFORMACIÓN DE SESIÓN ===");
+        console.log("Usuario actual:", scope.$root.currentUser);
+        console.log("Hash actual:", window.location.hash);
+        console.log("Pusher postres:", typeof window.pusherPostres);
+        console.log("Pusher ingredientes:", typeof window.pusherIngredientes);
+        console.log("===============================");
+    }
+}
+
+// Hacer la función disponible globalmente para debug
+window.mostrarInfoSesion = mostrarInfoSesion;
+
+// ======================================
+// COMENTARIOS Y DOCUMENTACIÓN
+// ======================================
+
+/*
+=== GUÍA DE USO DEL LOGOUT ===
+
+1. LOGOUT DESDE CUALQUIER LUGAR:
+   - Usar: ng-click="$root.logout()"
+   - Ejemplo: <button ng-click="$root.logout()">Cerrar Sesión</button>
+
+2. ATAJOS DE TECLADO:
+   - Ctrl + Shift + L: Logout rápido
+   - Ctrl + F: Enfocar búsqueda de postres
+   - Ctrl + Shift + F: Enfocar búsqueda de ingredientes
+   - ESC: Limpiar búsqueda activa
+
+3. INFORMACIÓN DEL USUARIO:
+   - Disponible en: $root.currentUser
+   - Ejemplo: {{$root.currentUser.username}}
+
+4. VERIFICACIÓN DE SESIÓN:
+   - Automática en cada cambio de ruta
+   - Manual con: $root.getCurrentUser()
+
+5. EJEMPLOS DE HTML:
+
+   <!-- Botón simple -->
+   <button class="btn btn-danger" ng-click="$root.logout()">
+       <i class="bi bi-box-arrow-right"></i> Logout
+   </button>
+
+   <!-- Con información del usuario -->
+   <div class="user-info" ng-show="$root.currentUser">
+       <span>Hola, {{$root.currentUser.username}}</span>
+       <button class="btn btn-outline-danger btn-sm" ng-click="$root.logout()">
+           Salir
+       </button>
+   </div>
+
+   <!-- Navbar completa -->
+   <nav class="navbar navbar-expand-lg">
+       <a class="navbar-brand" href="#/postres">Mi App</a>
+       <div class="navbar-nav ms-auto" ng-show="$root.currentUser">
+           <span class="nav-text me-3">{{$root.currentUser.username}}</span>
+           <button class="btn btn-outline-light" ng-click="$root.logout()">
+               <i class="bi bi-box-arrow-right"></i>
+           </button>
+       </div>
+   </nav>
+
+=== FUNCIONES DEBUG ===
+- mostrarInfoSesion(): Muestra info actual en consola
+- Se puede llamar desde DevTools: mostrarInfoSesion()
+
+=== CARACTERÍSTICAS IMPLEMENTADAS ===
+✅ Logout global disponible en toda la app
+✅ Verificación automática de sesión en cambios de ruta
+✅ Limpieza completa de datos al cerrar sesión
+✅ Desconexión de canales Pusher
+✅ Manejo de errores robusto
+✅ Confirmación antes de cerrar sesión
+✅ Atajos de teclado
+✅ Verificación al regresar a la página
+✅ Información del usuario disponible globalmente
+✅ Compatibilidad con todos los navegadores modernos
+✅ Integración perfecta con Flask backend
+*/

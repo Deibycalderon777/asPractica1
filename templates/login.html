@@ -1,6 +1,6 @@
 <div class="card-body">
   <!-- Mensaje de estado (éxito o error) -->
-  <div ng-if="mensaje" class="alert" ng-class="{'alert-success': mensaje.includes('Bienvenido') || mensaje.includes('exitoso'), 'alert-danger': !mensaje.includes('Bienvenido') && !mensaje.includes('exitoso')}" role="alert">
+  <div ng-if="mensaje" class="alert" ng-class="{'alert-success': mensaje.includes('Bienvenido') || mensaje.includes('exitoso'), 'alert-primary': !mensaje.includes('Bienvenido') && !mensaje.includes('exitoso')}" role="alert">
     {{mensaje}}
   </div>
   

@@ -4,6 +4,3 @@ mysql-connector-python
 pytz
 Flask-Cors
 pusher
-pymysql 
-Flask-Login
-
