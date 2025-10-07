@@ -1,0 +1,62 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+!define FONTAWESOME6 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons/font-awesome-6
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons/devicons
+!define DEVICONS2 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons/devicons2
+
+!include FONTAWESOME6/users.puml
+!include DEVICONS/html5.puml
+!include DEVICONS/python.puml
+!include DEVICONS/mysql.puml
+!include DEVICONS2/flask_original.puml
+!include DEVICONS2/angularjs.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(usuario, "Usuario", "Gestiona postres e ingredientes de la repostería.", $sprite="users")
+
+Enterprise_Boundary(c1, "Contexto") {
+    System(app, "Sistema de Gestión de Repostería", "Aplicación para administrar postres, ingredientes y sus relaciones.")
+    System(pusher, "Pusher", "API de notificaciones en tiempo real para actualizar datos.")
+
+    System_Boundary(c2, "Contenedores") {
+        Container(app_web, "Aplicación Web", "HTML5 + AngularJS + jQuery", "Interfaz SPA para CRUD de postres e ingredientes con búsqueda en tiempo real.", $sprite="angularjs")
+        Container(api, "API REST", "Flask (Python)", "Endpoints para gestionar postres, ingredientes y sus relaciones.", $sprite="python")
+        ContainerDb(bd, "Base de Datos", "MySQL", "Almacena postres, ingredientes y tabla relacional postresIngredientes.", $sprite="mysql")
+
+        Container_Boundary(c3, "Componentes") {
+            Component(app_routes, "app.py", "Flask", "Rutas principales:\n- Postres: /postres, /postre, /postre/<id>, /postre/eliminar, /postres/buscar, /postres/ingredientes/<id>\n- Ingredientes: /ingredientes, /ingrediente, /ingrediente/<id>, /ingrediente/eliminar, /ingredientes/buscar\n- Funciones: pusherPostres(), pusherIngredientes()", $sprite="flask_original")
+        }
+    }
+}
+
+Rel(usuario, app, "Gestiona postres e ingredientes", "https")
+
+Rel(app, app_web, "", "https")
+BiRel_U(app_web, pusher, "Suscripción a eventos en tiempo real", "WebSocket")
+BiRel(app_web, api, "Peticiones AJAX (GET/POST)", "https")
+Rel_R(api, bd, "Consultas SQL CRUD", "mysql.connector")
+Rel(api, app_routes, "")
+Rel_U(app_routes, pusher, "Notifica actualizaciones", "https")
+
+note right of app_web
+  Canales Pusher:
+  - canalPostres / eventoPostres
+  - canalIngredientes / eventoDeIngredientes
+  
+  Funcionalidades:
+  - Búsqueda en tiempo real
+  - Formularios dinámicos
+  - Validaciones client-side
+end note
+
+note right of bd
+  Tablas:
+  - postres (idPostre, nombrePostre, precio)
+  - ingredientes (idIngrediente, nombreIngrediente, existencias)
+  - postresIngredientes (idPostre, idIngrediente, cantidad)
+end note
+
+@enduml
