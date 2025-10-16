@@ -254,10 +254,14 @@ app.controller("loginCtrl", function ($scope, $http, $rootScope) {
 // ======================================
 // CONTROLLER DE POSTRES CON BÚSQUEDA INTEGRADA
 // ======================================
+// ======================================
+// CONTROLLER DE POSTRES CON GESTIÓN DE INGREDIENTES
+// ======================================
 app.controller("postresCtrl", function ($scope, $http, $rootScope) {
     let timeoutPostres;
+    let ingredientesTemporales = []; // Array para almacenar ingredientes temporalmente
     
-    // Función de logout específica del controlador (opcional)
+    // Función de logout
     $scope.cerrarSesion = function() {
         console.log("Logout desde postresCtrl");
         $rootScope.logout();
@@ -268,7 +272,6 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
         console.log("Ejecutando buscarPostres() con término:", termino);
         
         if (termino.trim() === "") {
-            // Cargar todos los postres
             $.get("/tbodyPostres", function (trsHTML) {
                 $("#tbodyPostres").html(trsHTML);
                 console.log("Tabla de postres actualizada sin filtro");
@@ -277,7 +280,6 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
                 $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-danger'>Error al cargar postres</td></tr>");
             });
         } else {
-            // Buscar con filtro
             $.get("/postres/buscar", {
                 busqueda: termino
             }, function (postres) {
@@ -286,7 +288,6 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
                 if (postres.length === 0) {
                     $("#tbodyPostres").html("<tr><td colspan='4' class='text-center text-muted'><i class='bi bi-search'></i> No se encontraron postres con ese criterio</td></tr>");
                 } else {
-                    // Construir HTML de la tabla
                     let html = "";
                     postres.forEach(function(postre) {
                         html += `
@@ -337,10 +338,138 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
         console.log("Limpiando formulario de postre");
         $("#frmPostre")[0].reset();
         $("#hiddenIdPostre").remove();
+        ingredientesTemporales = [];
+        actualizarListaIngredientes();
+        $("#tituloFormPostre").text("Registrar Nuevo Postre");
     }
 
-    // Cargar postres inicialmente
+    // ===== NUEVAS FUNCIONES PARA INGREDIENTES =====
+    
+    // Cargar ingredientes disponibles en el select
+    function cargarIngredientesDisponibles() {
+        console.log("Cargando ingredientes disponibles");
+        $.get("/ingredientes/disponibles", function(ingredientes) {
+            let options = '<option value="">Seleccionar ingrediente...</option>';
+            ingredientes.forEach(function(ing) {
+                options += `<option value="${ing.idIngrediente}">${ing.nombreIngrediente} (${ing.existencias} disponibles)</option>`;
+            });
+            $("#SelectNombreIngrediente").html(options);
+        }).fail(function(error) {
+            console.error("Error al cargar ingredientes:", error);
+            toast("Error al cargar ingredientes", 2);
+        });
+    }
+    
+    // Agregar ingrediente a la lista temporal
+    function agregarIngredienteTemp() {
+        const ingredienteId = $("#SelectNombreIngrediente").val();
+        const ingredienteNombre = $("#SelectNombreIngrediente option:selected").text();
+        const cantidad = $("#txtCantidad").val();
+        
+        if (!ingredienteId || !cantidad) {
+            toast("Selecciona un ingrediente y la cantidad", 2);
+            return;
+        }
+        
+        if (parseFloat(cantidad) <= 0) {
+            toast("La cantidad debe ser mayor a 0", 2);
+            return;
+        }
+        
+        // Verificar si el ingrediente ya fue agregado
+        const existe = ingredientesTemporales.find(i => i.id === ingredienteId);
+        if (existe) {
+            // Actualizar cantidad si ya existe
+            existe.cantidad = cantidad;
+            existe.nombre = ingredienteNombre;
+            toast("Cantidad actualizada", 2);
+        } else {
+            // Agregar nuevo ingrediente
+            ingredientesTemporales.push({
+                id: ingredienteId,
+                nombre: ingredienteNombre,
+                cantidad: cantidad
+            });
+            toast("Ingrediente agregado", 2);
+        }
+        
+        // Limpiar campos
+        $("#SelectNombreIngrediente").val("");
+        $("#txtCantidad").val("");
+        
+        // Actualizar vista
+        actualizarListaIngredientes();
+    }
+    
+    // Actualizar la visualización de ingredientes agregados
+    function actualizarListaIngredientes() {
+        const container = $("#listaIngredientesPostre");
+        
+        if (ingredientesTemporales.length === 0) {
+            container.html(`
+                <p class="text-muted mb-0">
+                    <i class="bi bi-info-circle"></i> No hay ingredientes agregados
+                </p>
+            `);
+        } else {
+            let html = '<div class="list-group">';
+            ingredientesTemporales.forEach(function(ing, index) {
+                html += `
+                    <div class="list-group-item ingrediente-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${ing.nombre}</strong>
+                            <span class="badge badge-cantidad bg-primary ms-2">${ing.cantidad} unidades</span>
+                        </div>
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-danger btn-eliminar-ingrediente-temp" 
+                                data-index="${index}"
+                                title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.html(html);
+        }
+    }
+    
+    // Eliminar ingrediente de la lista temporal
+    function eliminarIngredienteTemp(index) {
+        ingredientesTemporales.splice(index, 1);
+        actualizarListaIngredientes();
+        toast("Ingrediente eliminado", 2);
+    }
+    
+    // Guardar postre con ingredientes
+    function guardarPostreConIngredientes(postreId) {
+        if (ingredientesTemporales.length === 0) {
+            console.log("No hay ingredientes para guardar");
+            return Promise.resolve();
+        }
+        
+        console.log("Guardando ingredientes del postre:", ingredientesTemporales);
+        
+        // Crear promesas para cada ingrediente
+        const promesas = ingredientesTemporales.map(function(ing) {
+            return $.ajax({
+                url: "/postre/ingrediente/agregar",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    postre_id: postreId,
+                    ingrediente_id: ing.id,
+                    cantidad: ing.cantidad
+                })
+            });
+        });
+        
+        return Promise.all(promesas);
+    }
+
+    // Cargar ingredientes inicialmente
     buscarPostres();
+    cargarIngredientesDisponibles();
     
     // Configuración de Pusher para postres
     Pusher.logToConsole = true;
@@ -353,24 +482,40 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
         var channel = window.pusherPostres.subscribe("canalPostres");
         channel.bind("eventoPostres", function(data) {
             console.log("Evento Pusher recibido:", data);
-            // Mantener el término de búsqueda actual al actualizar
             const terminoBusqueda = $("#txtBuscarPostre").val() || "";
             buscarPostres(terminoBusqueda);
         });
     }
 
-    // Event listener para búsqueda en tiempo real
+    // ===== EVENT LISTENERS =====
+    
+    // Búsqueda en tiempo real
     $(document).off("input", "#txtBuscarPostre").on("input", "#txtBuscarPostre", function() {
         const termino = $(this).val();
         console.log("Término de búsqueda de postre:", termino);
         buscarPostresDebounced(termino);
     });
     
-    // Event listener para limpiar búsqueda
+    // Limpiar búsqueda
     $(document).off("click", "#btnLimpiarPostre").on("click", "#btnLimpiarPostre", function() {
         console.log("Limpiando búsqueda de postres");
         $("#txtBuscarPostre").val("");
         buscarPostres("");
+    });
+
+    // Agregar ingrediente al postre
+    $(document).off("click", "#btnAgregarIngrediente").on("click", "#btnAgregarIngrediente", function(event) {
+        event.preventDefault();
+        console.log("Agregando ingrediente al postre");
+        agregarIngredienteTemp();
+    });
+    
+    // Eliminar ingrediente de la lista temporal
+    $(document).off("click", ".btn-eliminar-ingrediente-temp").on("click", ".btn-eliminar-ingrediente-temp", function(event) {
+        event.preventDefault();
+        const index = $(this).data("index");
+        console.log("Eliminando ingrediente temporal en índice:", index);
+        eliminarIngredienteTemp(index);
     });
 
     // Guardar/actualizar postre
@@ -379,24 +524,40 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
         console.log("Formulario de postre enviado");
 
         const $submitBtn = $(this).find('button[type="submit"]');
-        $submitBtn.prop('disabled', true);
+        $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
 
-        $.post("/postre", {
+        const postreData = {
             idPostre: $("#hiddenIdPostre").val() || "",
             nombrePostre: $("#txtNombre").val(),
             precio: $("#txtPrecio").val()
-        }, function(response) {
+        };
+
+        // Primero guardar el postre
+        $.post("/postre", postreData, function(response) {
             console.log("Postre guardado exitosamente:", response);
-            limpiarFormularioPostre();
-            // Mantener búsqueda activa después de guardar
-            const terminoBusqueda = $("#txtBuscarPostre").val() || "";
-            buscarPostres(terminoBusqueda);
-            toast("Postre guardado correctamente", 3);
+            
+            const postreId = response.postre_id;
+            
+            // Luego guardar los ingredientes
+            guardarPostreConIngredientes(postreId)
+                .then(function() {
+                    console.log("Ingredientes guardados exitosamente");
+                    limpiarFormularioPostre();
+                    const terminoBusqueda = $("#txtBuscarPostre").val() || "";
+                    buscarPostres(terminoBusqueda);
+                    toast("Postre e ingredientes guardados correctamente", 3);
+                })
+                .catch(function(error) {
+                    console.error("Error al guardar ingredientes:", error);
+                    toast("Postre guardado pero hubo error con ingredientes", 2);
+                })
+                .finally(function() {
+                    $submitBtn.prop('disabled', false).html('<i class="bi bi-save"></i> Guardar Postre');
+                });
         }).fail(function(xhr, status, error) {
             console.error("Error al guardar postre:", error);
-            alert("Error al guardar el postre");
-        }).always(function() {
-            $submitBtn.prop('disabled', false);
+            toast("Error al guardar el postre", 2);
+            $submitBtn.prop('disabled', false).html('<i class="bi bi-save"></i> Guardar Postre');
         });
     });
 
@@ -424,11 +585,11 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
                 ]);
             }).fail(function(xhr, status, error) {
                 console.error("Error al cargar ingredientes:", error);
-                alert("Error al cargar ingredientes: " + error);
+                toast("Error al cargar ingredientes", 2);
             });
         } else {
             console.error("ID no encontrado");
-            alert("Error: No se pudo obtener el ID del postre");
+            toast("Error: No se pudo obtener el ID del postre", 2);
         }
     });
 
@@ -448,15 +609,36 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
                     $("#frmPostre").prepend('<input type="hidden" id="hiddenIdPostre" name="idPostre">');
                 }
                 $("#hiddenIdPostre").val(postre.idPostre);
+                $("#tituloFormPostre").text("Editar Postre");
                 console.log("Formulario llenado para edición");
                 
+                // Cargar ingredientes del postre
+                $.get(`/postre/${id}/ingredientes`, function(ingredientes) {
+                    console.log("Ingredientes del postre cargados:", ingredientes);
+                    ingredientesTemporales = [];
+                    
+                    if (ingredientes && ingredientes.length > 0) {
+                        ingredientes.forEach(function(ing) {
+                            ingredientesTemporales.push({
+                                id: ing.idIngrediente || ing.ingrediente_id,
+                                nombre: ing.nombreIngrediente,
+                                cantidad: ing.cantidad
+                            });
+                        });
+                    }
+                    
+                    actualizarListaIngredientes();
+                }).fail(function(error) {
+                    console.log("No se pudieron cargar ingredientes del postre");
+                });
+                
                 $('html, body').animate({
-                    scrollTop: $("#frmPostre").offset().top
+                    scrollTop: $("#frmPostre").offset().top - 20
                 }, 500);
             }
         }).fail(function(xhr, status, error) {
             console.error("Error al cargar postre:", error);
-            alert("Error al cargar los datos del postre");
+            toast("Error al cargar los datos del postre", 2);
         });
     });
 
@@ -466,20 +648,19 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
         const $btn = $(this);
         console.log("Intentando eliminar postre con ID:", id);
         
-        if (confirm("¿Está seguro de eliminar este postre?")) {
+        if (confirm("¿Está seguro de eliminar este postre y sus ingredientes?")) {
             $btn.prop('disabled', true);
             
             $.post("/postre/eliminar", {
                 id: id
             }, function(response) {
                 console.log("Postre eliminado exitosamente:", response);
-                // Mantener búsqueda activa después de eliminar
                 const terminoBusqueda = $("#txtBuscarPostre").val() || "";
                 buscarPostres(terminoBusqueda);
                 toast("Postre eliminado correctamente", 3);
             }).fail(function(xhr, status, error) {
                 console.error("Error al eliminar postre:", error);
-                alert("Error al eliminar el postre");
+                toast("Error al eliminar el postre", 2);
             }).always(function() {
                 $btn.prop('disabled', false);
             });
@@ -488,8 +669,17 @@ app.controller("postresCtrl", function ($scope, $http, $rootScope) {
 
     // Cancelar edición
     $(document).off("click", "#btnCancelarPostre").on("click", "#btnCancelarPostre", function (event) {
+        event.preventDefault();
         console.log("Cancelando edición de postre");
         limpiarFormularioPostre();
+    });
+    
+    // Permitir agregar ingrediente con Enter en el campo de cantidad
+    $(document).off("keypress", "#txtCantidad").on("keypress", "#txtCantidad", function(e) {
+        if (e.which === 13) { // Enter key
+            e.preventDefault();
+            $("#btnAgregarIngrediente").click();
+        }
     });
 });
 
