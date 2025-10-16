@@ -7,7 +7,21 @@ class IngredienteRepository:
         self.db = DatabaseConfig()
     
     def obtener_todos(self):
-        """Obtener últimos 10 ingredientes"""
+        """Obtener TODOS los ingredientes (SIN LÍMITE para el select)"""
+        with self.db.get_connection() as con:
+            cursor = con.cursor(dictionary=True)
+            sql = """
+            SELECT idIngrediente, nombreIngrediente, existencias
+            FROM ingredientes
+            ORDER BY nombreIngrediente ASC
+            """
+            # NOTA: Sin LIMIT para obtener todos los ingredientes
+            cursor.execute(sql)
+            registros = cursor.fetchall()
+            return [Ingrediente.from_dict(r) for r in registros]
+    
+    def obtener_ultimos_10(self):
+        """Obtener últimos 10 ingredientes para la tabla principal"""
         with self.db.get_connection() as con:
             cursor = con.cursor(dictionary=True)
             sql = """
