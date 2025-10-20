@@ -8,7 +8,6 @@ from routes.usuario_routes import usuario_bp
 app = Flask(__name__)
 app.secret_key = 'utnc'  # Necesario para las sesiones
 CORS(app)
-
 # Registrar blueprints
 app.register_blueprint(postre_bp)
 app.register_blueprint(ingrediente_bp)
