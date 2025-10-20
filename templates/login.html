@@ -1,22 +1,24 @@
 <div class="card-body">
-  <!-- Mensaje de estado (éxito o error) -->
+  <!-- Mensaje de estado  -->
   <div ng-if="mensaje" class="alert" ng-class="{'alert-success': mensaje.includes('Bienvenido') || mensaje.includes('exitoso'), 'alert-primary': !mensaje.includes('Bienvenido') && !mensaje.includes('exitoso')}" role="alert">
     {{mensaje}}
   </div>
   
-  <!-- Indicador de carga -->
+  <!-- Indicador de carga   -->
   <div ng-if="cargando" class="text-center mb-3">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Cargando...</span>
     </div>
     <p class="mt-2">Verificando credenciales...</p>
   </div>
+
+ 
   
 <!-- Formulario de login -->
 <form ng-submit="login()" ng-hide="cargando">
   <!-- Imagen superior -->
   <div class="text-center mb-3">
-    <img src="static/logo.png" alt="Logo" class="img-fluid" style="max-width: 300px;">
+    <img src="/static/logo.png" alt="Logo" class="img-fluid" style="max-width: 300px;">
   </div>
 
   <div class="mb-3">
