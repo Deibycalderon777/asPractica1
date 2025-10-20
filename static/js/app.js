@@ -954,6 +954,9 @@ function desconectarPusher() {
     }
 }
 
+/*
+
+
 // Función para mostrar atajos de teclado (opcional)
 $(document).ready(function() {
     console.log("Inicializando funciones de búsqueda mejoradas");
@@ -1026,6 +1029,9 @@ $(document).ready(function() {
         contadorTips++;
     }, 3000);
 });
+
+
+*/
 
 // ======================================
 // CONFIGURACIÓN DE FECHA Y HORA
